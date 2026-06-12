@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
-import { AssetList } from '../components/AssetList/AssetList';
+import { AssetList, getAssetKey } from '../components/AssetList/AssetList';
 import { useAssignedAssets } from '../hooks/useAssignedAssets';
 import { useSendTerm } from '../hooks/useSendTerm';
 import { useSnackbar } from '../components/Snackbar/SnackbarProvider';
@@ -36,12 +36,14 @@ export function Result() {
 
   const [selectedAssets, setSelectedAssets] = useState<GlpiAsset[]>([]);
 
-  const selectedIds = useMemo(() => selectedAssets.map((asset) => asset.id), [selectedAssets]);
+  const selectedKeys = useMemo(() => selectedAssets.map((asset) => getAssetKey(asset)), [selectedAssets]);
 
   const handleToggle = (asset: GlpiAsset): void => {
+    const key = getAssetKey(asset);
+
     setSelectedAssets((prev) =>
-      prev.some((item) => item.id === asset.id)
-        ? prev.filter((item) => item.id !== asset.id)
+      prev.some((item) => getAssetKey(item) === key)
+        ? prev.filter((item) => getAssetKey(item) !== key)
         : [...prev, asset],
     );
   };
@@ -140,7 +142,7 @@ export function Result() {
 
             <AssetList
               assets={data.assets}
-              selectedIds={selectedIds}
+              selectedKeys={selectedKeys}
               onToggle={handleToggle}
             />
 

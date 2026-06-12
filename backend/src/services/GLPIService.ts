@@ -4,6 +4,7 @@ import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import type {
   AssignedAssetsResult,
+  GlpiAsset,
   GlpiComputerByContactResult,
   GlpiComputerRawDebugResult,
   GlpiComputerSummary,
@@ -480,12 +481,16 @@ export class GLPIService {
   }
 
   /**
-   * Descobre dinamicamente, via listSearchOptions/Computer, os IDs dos
-   * campos relevantes do itemtype Computer (contact, id, name, serial,
+   * Descobre dinamicamente, via listSearchOptions/{itemtype}, os IDs dos
+   * campos relevantes do itemtype informado (contact, id, name, serial,
    * otherserial), evitando depender de numeros fixos que podem variar
    * entre instalacoes do GLPI.
+   *
+   * Assume a convencao padrao do GLPI de que a tabela do itemtype e
+   * "glpi_<itemtype em minusculas>s" (ex.: Computer -> glpi_computers,
+   * Monitor -> glpi_monitors, Peripheral -> glpi_peripherals).
    */
-  private async getComputerFieldIds(sessionToken: string): Promise<{
+  private async getAssetFieldIds(sessionToken: string, itemtype: string): Promise<{
     contactFieldId: string;
     idFieldId: string;
     nameFieldId: string;
@@ -493,12 +498,14 @@ export class GLPIService {
     otherserialFieldId: string | null;
   }> {
     const optionsResponse = await this.http.get<Record<string, { table?: string; field?: string }>>(
-      '/listSearchOptions/Computer',
+      `/listSearchOptions/${itemtype}`,
       { headers: { 'Session-Token': sessionToken } },
     );
 
     const options = optionsResponse.data;
-    const findFieldId = (table: string, field: string): string | null => {
+    const table = `glpi_${itemtype.toLowerCase()}s`;
+
+    const findFieldId = (field: string): string | null => {
       for (const [id, option] of Object.entries(options)) {
         if (option && typeof option === 'object' && option.table === table && option.field === field) {
           return id;
@@ -508,29 +515,30 @@ export class GLPIService {
       return null;
     };
 
-    const contactFieldId = findFieldId('glpi_computers', 'contact');
+    const contactFieldId = findFieldId('contact');
 
     if (!contactFieldId) {
-      throw AppError.badGateway('Nao foi possivel localizar o campo "contact" em listSearchOptions/Computer');
+      throw AppError.badGateway(`Nao foi possivel localizar o campo "contact" em listSearchOptions/${itemtype}`);
     }
 
     return {
       contactFieldId,
-      idFieldId: findFieldId('glpi_computers', 'id') ?? '2',
-      nameFieldId: findFieldId('glpi_computers', 'name') ?? '1',
-      serialFieldId: findFieldId('glpi_computers', 'serial'),
-      otherserialFieldId: findFieldId('glpi_computers', 'otherserial'),
+      idFieldId: findFieldId('id') ?? '2',
+      nameFieldId: findFieldId('name') ?? '1',
+      serialFieldId: findFieldId('serial'),
+      otherserialFieldId: findFieldId('otherserial'),
     };
   }
 
   /**
-   * Pesquisa computadores via search/Computer filtrando pelo campo
-   * "contact", retornando os resultados normalizados (id, name, contact,
-   * serial, inventoryNumber) junto com a query enviada e a resposta crua.
+   * Pesquisa itens via search/{itemtype} filtrando pelo campo "contact",
+   * retornando os resultados normalizados (id, name, contact, serial,
+   * inventoryNumber) junto com a query enviada e a resposta crua.
    */
-  private async searchComputersByContact(
+  private async searchItemsByContact(
     sessionToken: string,
-    fieldIds: Awaited<ReturnType<GLPIService['getComputerFieldIds']>>,
+    itemtype: string,
+    fieldIds: Awaited<ReturnType<GLPIService['getAssetFieldIds']>>,
     contactValue: string,
     searchtype: 'contains' | 'equals',
   ): Promise<{
@@ -564,7 +572,7 @@ export class GLPIService {
       totalcount?: number;
       count?: number;
       data?: Record<string, GlpiSearchRow>[];
-    }>('/search/Computer', { params, headers: { 'Session-Token': sessionToken } });
+    }>(`/search/${itemtype}`, { params, headers: { 'Session-Token': sessionToken } });
 
     const rows = response.data.data ?? [];
 
@@ -590,7 +598,7 @@ export class GLPIService {
     const sessionToken = await this.ensureSession();
 
     try {
-      const fieldIds = await this.getComputerFieldIds(sessionToken);
+      const fieldIds = await this.getAssetFieldIds(sessionToken, 'Computer');
 
       logger.info('[GLPI DEBUG] Buscando computadores por contact', {
         endpoint: '/search/Computer',
@@ -598,7 +606,7 @@ export class GLPIService {
         fieldIds,
       });
 
-      const result = await this.searchComputersByContact(sessionToken, fieldIds, contact, 'contains');
+      const result = await this.searchItemsByContact(sessionToken, 'Computer', fieldIds, contact, 'contains');
 
       logger.info(`[GLPI DEBUG] Busca por contact -> ${result.computers.length} computador(es) encontrado(s)`, {
         endpoint: '/search/Computer',
@@ -762,7 +770,7 @@ export class GLPIService {
       }
     }
 
-    const fieldIds = await this.getComputerFieldIds(sessionToken);
+    const fieldIds = await this.getAssetFieldIds(sessionToken, 'Computer');
     const candidates: GlpiContactCandidate[] = [];
 
     for (const { strategy, description, base } of strategies) {
@@ -777,7 +785,7 @@ export class GLPIService {
         generatedValue,
       });
 
-      const result = await this.searchComputersByContact(sessionToken, fieldIds, generatedValue, 'equals');
+      const result = await this.searchItemsByContact(sessionToken, 'Computer', fieldIds, generatedValue, 'equals');
       const matchFound = result.computers.length > 0;
 
       logger.info(
@@ -818,39 +826,61 @@ export class GLPIService {
   }
 
   /**
-   * Busca os equipamentos (Computer) atribuidos a um colaborador a partir do
-   * seu email corporativo.
+   * Pesquisa um itemtype por contact (campo "Nome alternativo do usuario")
+   * e normaliza os resultados para o formato GlpiAsset.
+   */
+  private async searchAssetsByContact(sessionToken: string, itemtype: string, contact: string): Promise<GlpiAsset[]> {
+    const fieldIds = await this.getAssetFieldIds(sessionToken, itemtype);
+    const result = await this.searchItemsByContact(sessionToken, itemtype, fieldIds, contact, 'contains');
+
+    return result.computers.map((item) => ({
+      id: item.id,
+      itemtype,
+      name: item.name,
+      serial: item.serial,
+      inventoryNumber: item.inventoryNumber,
+      contact: item.contact,
+    }));
+  }
+
+  /**
+   * Busca os equipamentos atribuidos a um colaborador a partir do seu email
+   * corporativo.
    *
    * IMPORTANTE: neste GLPI a associacao real entre ativos e colaboradores
    * NAO e feita pela tabela glpi_users / campo users_id. Ela e feita pelo
-   * campo livre glpi_computers.contact ("Nome alternativo do usuario"),
-   * preenchido pela sincronizacao com o Azure AD no formato
-   * "NomeSobrenome@AzureAD". Por isso o valor de "contact" e gerado
-   * deterministicamente a partir do email (generateContactFromEmail) e usado
-   * diretamente em /search/Computer (campo "contact", searchtype=contains).
+   * campo livre "contact" ("Nome alternativo do usuario", field ID 7),
+   * presente em Computer, Monitor, Peripheral, Phone e Printer, preenchido
+   * pela sincronizacao com o Azure AD no formato "NomeSobrenome@AzureAD".
+   * Por isso o valor de "contact" e gerado deterministicamente a partir do
+   * email (generateContactFromEmail) e usado diretamente em
+   * /search/{itemtype} (campo "contact", searchtype=contains), para cada
+   * itemtype, em paralelo.
    */
   public async getAssignedAssets(email: string): Promise<AssignedAssetsResult> {
     const contact = this.generateContactFromEmail(email);
+    const sessionToken = await this.ensureSession();
 
-    let computers: GlpiComputerSummary[];
+    const itemtypes = ['Computer', 'Monitor', 'Peripheral', 'Phone', 'Printer'];
 
-    try {
-      const sessionToken = await this.ensureSession();
-      const fieldIds = await this.getComputerFieldIds(sessionToken);
-      const result = await this.searchComputersByContact(sessionToken, fieldIds, contact, 'contains');
+    const results = await Promise.allSettled(
+      itemtypes.map((itemtype) => this.searchAssetsByContact(sessionToken, itemtype, contact)),
+    );
 
-      computers = result.computers;
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
+    const assets: GlpiAsset[] = [];
+
+    results.forEach((result, index) => {
+      const itemtype = itemtypes[index];
+
+      if (result.status === 'fulfilled') {
+        assets.push(...result.value);
+      } else {
+        logger.warn(`Falha ao buscar ativos do tipo ${itemtype} por contact`, this.describeError(result.reason));
       }
-
-      logger.error('Falha ao buscar equipamentos no GLPI por contact', this.describeError(error));
-      throw AppError.badGateway('Falha ao buscar equipamentos no GLPI');
-    }
+    });
 
     logger.info(
-      `[GLPI CONTACT SEARCH]\nEmail: ${email}\nContact gerado: ${contact}\nEquipamentos encontrados: ${computers.length}`,
+      `[GLPI CONTACT SEARCH]\nEmail: ${email}\nContact gerado: ${contact}\nEquipamentos encontrados: ${assets.length}`,
     );
 
     const localPart = email.split('@')[0] ?? '';
@@ -862,14 +892,7 @@ export class GLPIService {
 
     return {
       user: { fullName: fullName || email, email },
-      assets: computers.map((computer) => ({
-        id: computer.id,
-        itemtype: 'Computer',
-        name: computer.name,
-        serial: computer.serial,
-        inventoryNumber: computer.inventoryNumber,
-        contact: computer.contact,
-      })),
+      assets,
     };
   }
 }
