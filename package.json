@@ -1,0 +1,18 @@
+{
+  "name": "envio-termo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicacao para gerenciamento e envio de Termos de Responsabilidade de equipamentos corporativos (GLPI + DocuSign)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build:backend": "npm run build --workspace backend",
+    "build:frontend": "npm run build --workspace frontend",
+    "lint:backend": "npm run lint --workspace backend",
+    "lint:frontend": "npm run lint --workspace frontend"
+  }
+}

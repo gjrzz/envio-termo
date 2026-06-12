@@ -1,0 +1,83 @@
+import axios, { AxiosError } from 'axios';
+import type {
+  AssignedAssetsResult,
+  SendTermInput,
+  TermRecord,
+} from '../types';
+
+const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+
+export const apiClient = axios.create({
+  baseURL,
+  timeout: 30_000,
+});
+
+/**
+ * Erro normalizado lancado pelas chamadas a API, com a mensagem amigavel
+ * vinda do backend (quando disponivel).
+ */
+export class ApiError extends Error {
+  public readonly statusCode?: number;
+  public readonly details?: unknown;
+
+  constructor(message: string, statusCode?: number, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.details = details;
+  }
+}
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ error?: string; details?: unknown }>) => {
+    const statusCode = error.response?.status;
+    const message =
+      error.response?.data?.error ??
+      (error.request
+        ? 'Nao foi possivel conectar ao servidor. Verifique sua conexao.'
+        : error.message);
+
+    return Promise.reject(new ApiError(message, statusCode, error.response?.data?.details));
+  },
+);
+
+/**
+ * Busca o colaborador e os equipamentos atribuidos a ele no GLPI a partir
+ * do email corporativo.
+ */
+export async function getAssignedAssets(email: string): Promise<AssignedAssetsResult> {
+  const response = await apiClient.get<AssignedAssetsResult>(
+    `/users/${encodeURIComponent(email)}/assets`,
+  );
+
+  return response.data;
+}
+
+/**
+ * Envia o termo de responsabilidade com os equipamentos selecionados,
+ * criando o envelope no DocuSign.
+ */
+export async function sendTerm(input: SendTermInput): Promise<TermRecord> {
+  const response = await apiClient.post<TermRecord>('/terms/send', input);
+
+  return response.data;
+}
+
+/**
+ * Lista o historico de termos enviados.
+ */
+export async function listTerms(): Promise<TermRecord[]> {
+  const response = await apiClient.get<TermRecord[]>('/terms');
+
+  return response.data;
+}
+
+/**
+ * Retorna os detalhes de um termo especifico.
+ */
+export async function getTermById(id: number): Promise<TermRecord> {
+  const response = await apiClient.get<TermRecord>(`/terms/${id}`);
+
+  return response.data;
+}

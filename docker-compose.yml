@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: envio-termo-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - '4000:4000'
+    volumes:
+      - backend-data:/app/data
+      - ./backend/docusign_private_key.pem:/app/docusign_private_key.pem:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+    container_name: envio-termo-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '5173:80'
+
+volumes:
+  backend-data:
