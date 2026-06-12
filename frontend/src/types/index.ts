@@ -1,11 +1,7 @@
 /**
- * Colaborador localizado no GLPI.
+ * Colaborador identificado a partir do email corporativo informado na busca.
  */
 export interface GlpiUser {
-  id: number;
-  username: string;
-  firstName: string;
-  lastName: string;
   fullName: string;
   email: string;
 }
@@ -19,6 +15,7 @@ export interface GlpiAsset {
   name: string;
   serial: string | null;
   inventoryNumber: string | null;
+  contact: string | null;
 }
 
 /**

@@ -9,15 +9,6 @@ const envSchema = z.object({
   GLPI_API_URL: z.string().url(),
   GLPI_APP_TOKEN: z.string().min(1),
   GLPI_USER_TOKEN: z.string().min(1),
-  GLPI_ASSET_TYPES: z
-    .string()
-    .default('Computer,Monitor,Peripheral,Phone')
-    .transform((value) =>
-      value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean),
-    ),
   GLPI_SEARCH_FIELD_EMAIL: z.coerce.number().default(5),
 
   DOCUSIGN_BASE_PATH: z.string().url(),

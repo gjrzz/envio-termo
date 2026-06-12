@@ -37,6 +37,42 @@ export const sendTermSchema = z.object({
     .min(1, 'Selecione ao menos um equipamento para o termo'),
 });
 
+/**
+ * Valida o query param `email` da rota de debug
+ * GET /api/glpi/debug/users.
+ */
+export const glpiDebugUsersQuerySchema = z.object({
+  email: z.string().email('Informe um email valido'),
+});
+
+/**
+ * Valida o query param `query` da rota de debug
+ * GET /api/glpi/debug/user-search.
+ */
+export const glpiDebugUserSearchQuerySchema = z.object({
+  query: z.string().min(1, 'Informe um texto de busca'),
+});
+
+/**
+ * Valida o query param `value` da rota de debug
+ * GET /api/glpi/debug/computer/:id.
+ */
+export const glpiDebugComputerQuerySchema = z.object({
+  value: z.string().min(1, 'Informe o valor a ser pesquisado'),
+});
+
+/**
+ * Valida o query param `contact` da rota de debug
+ * GET /api/glpi/debug/computers-by-contact.
+ */
+export const glpiDebugComputersByContactQuerySchema = z.object({
+  contact: z.string().min(1, 'Informe o valor do campo contact'),
+});
+
 export type SendTermBody = z.infer<typeof sendTermSchema>;
 export type EmailParam = z.infer<typeof emailParamSchema>;
 export type IdParam = z.infer<typeof idParamSchema>;
+export type GlpiDebugUsersQuery = z.infer<typeof glpiDebugUsersQuerySchema>;
+export type GlpiDebugUserSearchQuery = z.infer<typeof glpiDebugUserSearchQuerySchema>;
+export type GlpiDebugComputerQuery = z.infer<typeof glpiDebugComputerQuerySchema>;
+export type GlpiDebugComputersByContactQuery = z.infer<typeof glpiDebugComputersByContactQuerySchema>;
