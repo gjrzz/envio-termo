@@ -11,6 +11,12 @@ const envSchema = z.object({
   GLPI_USER_TOKEN: z.string().min(1),
   GLPI_SEARCH_FIELD_EMAIL: z.coerce.number().default(5),
 
+  MONDAY_API_TOKEN: z.string().min(1),
+  MONDAY_BOARD_ID: z.string().min(1),
+
+  EMPLOYEE_PROVIDER: z.enum(['monday', 'excel']).default('monday'),
+  EMPLOYEE_EXCEL_PATH: z.string().default('./data/colaboradores.xlsx'),
+
   DOCUSIGN_BASE_PATH: z.string().url(),
   DOCUSIGN_AUTH_SERVER: z.string().min(1),
   DOCUSIGN_INTEGRATION_KEY: z.string().min(1),

@@ -27,6 +27,21 @@ export interface AssignedAssetsResult {
 }
 
 /**
+ * Dados do colaborador obtidos a partir da board do Monday.com.
+ */
+export interface MondayEmployee {
+  fullName: string;
+  cpf: string | null;
+  corporateEmail: string | null;
+  personalEmail: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  company: string | null;
+  location: string | null;
+  username: string | null;
+}
+
+/**
  * Equipamento selecionado para constar no Termo de Responsabilidade.
  */
 export interface EquipmentItem {

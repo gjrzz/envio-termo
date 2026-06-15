@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type {
   AssignedAssetsResult,
+  MondayEmployee,
   SendTermInput,
   TermRecord,
 } from '../types';
@@ -49,6 +50,18 @@ apiClient.interceptors.response.use(
 export async function getAssignedAssets(email: string): Promise<AssignedAssetsResult> {
   const response = await apiClient.get<AssignedAssetsResult>(
     `/users/${encodeURIComponent(email)}/assets`,
+  );
+
+  return response.data;
+}
+
+/**
+ * Busca os dados do colaborador (nome, CPF, email e telefone) na board do
+ * Monday.com a partir do email corporativo.
+ */
+export async function getMondayEmployee(email: string): Promise<MondayEmployee> {
+  const response = await apiClient.get<MondayEmployee>(
+    `/monday/employee/${encodeURIComponent(email)}`,
   );
 
   return response.data;
