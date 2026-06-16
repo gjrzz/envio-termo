@@ -14,13 +14,14 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { AssetList, getAssetKey } from '../components/AssetList/AssetList';
 import { useAssignedAssets } from '../hooks/useAssignedAssets';
 import { useMondayEmployee } from '../hooks/useMondayEmployee';
-import { useSendTerm } from '../hooks/useSendTerm';
+import { useGenerateTerm } from '../hooks/useGenerateTerm';
 import { useSnackbar } from '../components/Snackbar/SnackbarProvider';
 import { ApiError } from '../services/api';
-import type { GlpiAsset } from '../types';
+import type { GenerateTermResult, GlpiAsset } from '../types';
 
 /**
  * Formata um email do colaborador, exibindo "Não informado" quando o valor
@@ -71,9 +72,10 @@ export function Result() {
     isError: isEmployeeError,
     error: employeeError,
   } = useMondayEmployee(email);
-  const sendTermMutation = useSendTerm();
+  const generateTermMutation = useGenerateTerm();
 
   const [selectedAssets, setSelectedAssets] = useState<GlpiAsset[]>([]);
+  const [generatedResult, setGeneratedResult] = useState<GenerateTermResult | null>(null);
 
   const selectedKeys = useMemo(() => selectedAssets.map((asset) => getAssetKey(asset)), [selectedAssets]);
 
@@ -88,35 +90,41 @@ export function Result() {
   };
 
   const handleSendTerm = (): void => {
-    if (!assetsData) {
+    if (!employeeData) {
+      showSnackbar('Dados do colaborador não disponíveis.', 'error');
       return;
     }
 
-    sendTermMutation.mutate(
+    generateTermMutation.mutate(
       {
-        nome: assetsData.user.fullName,
-        email: assetsData.user.email,
-        equipamentos: selectedAssets.map((asset) => ({
+        employee: {
+          fullName: employeeData.fullName,
+          cpf: employeeData.cpf ?? '',
+          birthDate: employeeData.birthDate ?? '',
+          corporateEmail: employeeData.corporateEmail ?? '',
+          personalEmail: employeeData.personalEmail ?? '',
+          phone: employeeData.phone ?? '',
+        },
+        selectedAssets: selectedAssets.map((asset) => ({
           id: asset.id,
-          itemtype: asset.itemtype,
+          type: asset.itemtype,
           name: asset.name,
-          serial: asset.serial,
           inventoryNumber: asset.inventoryNumber,
+          serial: asset.serial,
+          model: asset.model,
+          contact: asset.contact,
         })),
       },
       {
-        onSuccess: (term) => {
-          showSnackbar(
-            `Termo enviado com sucesso! Envelope DocuSign: ${term.envelopeId ?? '-'}`,
-            'success',
-          );
-          navigate('/historico');
+        onSuccess: (result) => {
+          setGeneratedResult(result);
+          showSnackbar(`Termo enviado para assinatura! Envelope: ${result.envelopeId}`, 'success');
         },
         onError: (mutationError) => {
           const message =
             mutationError instanceof ApiError
               ? mutationError.message
-              : 'Falha ao enviar o termo. Tente novamente.';
+              : 'Falha ao gerar o termo. Tente novamente.';
           showSnackbar(message, 'error');
         },
       },
@@ -150,10 +158,10 @@ export function Result() {
       {isEmployeeError && (
         <Alert severity={employeeError instanceof ApiError && employeeError.statusCode === 404 ? 'info' : 'error'}>
           {employeeError instanceof ApiError && employeeError.statusCode === 404
-            ? 'Colaborador não encontrado no Monday.com. Verifique se o email está correto.'
+            ? 'Colaborador não encontrado. Verifique se o email está correto.'
             : employeeError instanceof ApiError
               ? employeeError.message
-              : 'Falha ao buscar dados do colaborador no Monday.com.'}
+              : 'Falha ao buscar dados do colaborador.'}
         </Alert>
       )}
 
@@ -233,12 +241,42 @@ export function Result() {
                 variant="contained"
                 size="large"
                 startIcon={<SendIcon />}
-                disabled={selectedAssets.length === 0 || sendTermMutation.isPending}
+                disabled={selectedAssets.length === 0 || generateTermMutation.isPending || !employeeData}
                 onClick={handleSendTerm}
               >
-                {sendTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
+                {generateTermMutation.isPending ? 'Gerando...' : 'Enviar Termo'}
               </Button>
             </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {generatedResult && (
+        <Card elevation={3} sx={{ borderLeft: 4, borderColor: 'success.main' }}>
+          <CardContent sx={{ p: 4 }}>
+            <Stack direction="row" alignItems="center" gap={1} mb={2}>
+              <CheckCircleIcon color="success" />
+              <Typography variant="h6" color="success.main">
+                Termo enviado com sucesso
+              </Typography>
+            </Stack>
+
+            <Divider sx={{ mb: 2 }} />
+
+            <Stack spacing={1}>
+              <Typography variant="body1">
+                <strong>Envelope ID:</strong> {generatedResult.envelopeId}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Status:</strong> {generatedResult.status}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Enviado para:</strong> {generatedResult.recipientName} ({generatedResult.recipientEmail})
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Equipamentos incluídos: {generatedResult.assetsCount}
+              </Typography>
+            </Stack>
           </CardContent>
         </Card>
       )}

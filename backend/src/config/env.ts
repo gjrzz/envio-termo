@@ -11,14 +11,14 @@ const envSchema = z.object({
   GLPI_USER_TOKEN: z.string().min(1),
   GLPI_SEARCH_FIELD_EMAIL: z.coerce.number().default(5),
 
-  MONDAY_API_TOKEN: z.string().min(1),
-  MONDAY_BOARD_ID: z.string().min(1),
+  MONDAY_API_TOKEN: z.string().default(''),
+  MONDAY_BOARD_ID: z.string().default(''),
 
-  EMPLOYEE_PROVIDER: z.enum(['monday', 'excel']).default('monday'),
+  EMPLOYEE_PROVIDER: z.enum(['monday', 'excel']).default('excel'),
   EMPLOYEE_EXCEL_PATH: z.string().default('./data/colaboradores.xlsx'),
 
-  DOCUSIGN_BASE_PATH: z.string().url(),
-  DOCUSIGN_AUTH_SERVER: z.string().min(1),
+  DOCUSIGN_BASE_PATH: z.string().default('https://demo.docusign.net/restapi'),
+  DOCUSIGN_AUTH_SERVER: z.string().default('account-d.docusign.com'),
   DOCUSIGN_INTEGRATION_KEY: z.string().min(1),
   DOCUSIGN_USER_ID: z.string().min(1),
   DOCUSIGN_ACCOUNT_ID: z.string().min(1),
@@ -26,6 +26,19 @@ const envSchema = z.object({
   DOCUSIGN_BRAND_NAME: z.string().default('Sua Empresa'),
 
   DATABASE_PATH: z.string().default('./data/database.sqlite'),
+
+  // Pasta local onde os DOCX gerados serao salvos (sincronizada pelo OneDrive)
+  GENERATED_TERMS_PATH: z.string().min(1),
+
+  // Template DOCX
+  DOCX_TEMPLATE_PATH: z.string().default('./templates/ModeloTermo.docx'),
+
+  // DocuSign Template ID para Termo de Responsabilidade
+  DOCUSIGN_TERM_TEMPLATE_ID: z.string().default('0bfcf43b-76aa-4c63-b73d-c74e803f9586'),
+
+  // Email de teste - quando definido, TODOS os termos sao enviados para
+  // este email independente do email do colaborador. Remover em producao.
+  DOCUSIGN_OVERRIDE_RECIPIENT_EMAIL: z.string().default(''),
 });
 
 function loadEnv() {

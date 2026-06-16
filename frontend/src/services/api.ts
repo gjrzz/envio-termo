@@ -1,6 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import type {
   AssignedAssetsResult,
+  GenerateTermInput,
+  GenerateTermResult,
   MondayEmployee,
   SendTermInput,
   TermRecord,
@@ -91,6 +93,16 @@ export async function listTerms(): Promise<TermRecord[]> {
  */
 export async function getTermById(id: number): Promise<TermRecord> {
   const response = await apiClient.get<TermRecord>(`/terms/${id}`);
+
+  return response.data;
+}
+
+/**
+ * Gera o DOCX do Termo de Responsabilidade a partir dos dados do
+ * colaborador e dos equipamentos selecionados, salvando localmente.
+ */
+export async function generateTerm(input: GenerateTermInput): Promise<GenerateTermResult> {
+  const response = await apiClient.post<GenerateTermResult>('/terms/generate', input);
 
   return response.data;
 }

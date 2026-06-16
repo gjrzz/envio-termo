@@ -36,6 +36,7 @@ export interface GlpiAsset {
   name: string;
   serial: string | null;
   inventoryNumber: string | null;
+  model: string | null;
   contact: string | null;
 }
 
@@ -135,6 +136,7 @@ export interface GlpiComputerSummary {
   contact: string | null;
   serial: string | null;
   inventoryNumber: string | null;
+  model: string | null;
 }
 
 /**
