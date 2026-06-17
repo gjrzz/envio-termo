@@ -151,9 +151,18 @@ export function Result() {
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       <Button
+        variant="outlined"
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/')}
-        sx={{ alignSelf: 'flex-start' }}
+        sx={{
+          alignSelf: 'flex-start',
+          color: '#ffffff',
+          borderColor: 'rgba(255,255,255,0.3)',
+          '&:hover': {
+            borderColor: '#ffffff',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+          },
+        }}
       >
         Nova busca
       </Button>
@@ -293,6 +302,7 @@ export function Result() {
                 startIcon={<SendIcon />}
                 disabled={selectedAssets.length === 0 || generateTermMutation.isPending || !employeeData}
                 onClick={handleSendTerm}
+                sx={{ backgroundColor: '#201A47', '&:hover': { backgroundColor: '#151030' } }}
               >
                 {generateTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
               </Button>
