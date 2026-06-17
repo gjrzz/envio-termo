@@ -6,9 +6,14 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
   Stack,
   Typography,
 } from '@mui/material';
@@ -76,6 +81,8 @@ export function Result() {
 
   const [selectedAssets, setSelectedAssets] = useState<GlpiAsset[]>([]);
   const [generatedResult, setGeneratedResult] = useState<GenerateTermResult | null>(null);
+  const [recipientType, setRecipientType] = useState<'personal' | 'corporate'>('personal');
+  const [sendCopyToOther, setSendCopyToOther] = useState(true);
 
   const selectedKeys = useMemo(() => selectedAssets.map((asset) => getAssetKey(asset)), [selectedAssets]);
 
@@ -114,6 +121,8 @@ export function Result() {
           model: asset.model,
           contact: asset.contact,
         })),
+        recipientType,
+        sendCopyToOther,
       },
       {
         onSuccess: (result) => {
@@ -236,6 +245,47 @@ export function Result() {
               onToggle={handleToggle}
             />
 
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+              Destino do Termo
+            </Typography>
+            <FormControl component="fieldset">
+              <RadioGroup
+                value={recipientType}
+                onChange={(e) => setRecipientType(e.target.value as 'personal' | 'corporate')}
+              >
+                <FormControlLabel
+                  value="personal"
+                  control={<Radio />}
+                  label={`Email Pessoal: ${employeeData?.personalEmail || 'Não informado'}`}
+                  disabled={!employeeData?.personalEmail}
+                />
+                <FormControlLabel
+                  value="corporate"
+                  control={<Radio />}
+                  label={`Email Corporativo: ${employeeData?.corporateEmail || 'Não informado'}`}
+                  disabled={!employeeData?.corporateEmail}
+                />
+              </RadioGroup>
+            </FormControl>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={sendCopyToOther}
+                  onChange={(e) => setSendCopyToOther(e.target.checked)}
+                />
+              }
+              label={`Enviar cópia para o outro email (${recipientType === 'personal' ? employeeData?.corporateEmail || '-' : employeeData?.personalEmail || '-'})`}
+              disabled={
+                recipientType === 'personal'
+                  ? !employeeData?.corporateEmail
+                  : !employeeData?.personalEmail
+              }
+              sx={{ mt: 1 }}
+            />
+
             <Box mt={3} display="flex" justifyContent="flex-end">
               <Button
                 variant="contained"
@@ -244,7 +294,7 @@ export function Result() {
                 disabled={selectedAssets.length === 0 || generateTermMutation.isPending || !employeeData}
                 onClick={handleSendTerm}
               >
-                {generateTermMutation.isPending ? 'Gerando...' : 'Enviar Termo'}
+                {generateTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
               </Button>
             </Box>
           </CardContent>

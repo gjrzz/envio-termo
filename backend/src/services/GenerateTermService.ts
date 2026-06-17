@@ -1,6 +1,7 @@
 import { docxGeneratorService, mapAssetType } from './DocxGeneratorService';
 import { pdfConverterService } from './PdfConverterService';
 import { docuSignService } from './DocuSignService';
+import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import type {
   GenerateTermInput,
@@ -41,12 +42,33 @@ function selectedAssetToTermAsset(asset: SelectedAsset): TermAsset {
  */
 export class GenerateTermService {
   public async execute(input: GenerateTermInput): Promise<GenerateTermResult> {
-    const { employee, selectedAssets } = input;
+    const { employee, selectedAssets, recipientType, sendCopyToOther } = input;
+
+    // Determinar email do signer baseado no recipientType
+    const signerEmail = recipientType === 'corporate'
+      ? employee.corporateEmail
+      : employee.personalEmail;
+
+    // Determinar CC (o outro email)
+    const ccEmail = recipientType === 'corporate'
+      ? employee.personalEmail
+      : employee.corporateEmail;
+
+    if (!signerEmail || !signerEmail.trim()) {
+      throw new AppError(
+        `O email ${recipientType === 'corporate' ? 'corporativo' : 'pessoal'} do colaborador esta vazio. Nao e possivel enviar o termo.`,
+        400,
+      );
+    }
 
     logger.info(`[TERM GENERATION] === INICIO ===`);
     logger.info(`[TERM GENERATION] Colaborador: ${employee.fullName}`);
     logger.info(`[TERM GENERATION] CPF: ${employee.cpf}`);
     logger.info(`[TERM GENERATION] Email pessoal: ${employee.personalEmail}`);
+    logger.info(`[TERM GENERATION] Email corporativo: ${employee.corporateEmail}`);
+    logger.info(`[TERM GENERATION] recipientType: ${recipientType}`);
+    logger.info(`[TERM GENERATION] Envelope sera enviado para: ${signerEmail}`);
+    logger.info(`[TERM GENERATION] Enviar copia (CC): ${sendCopyToOther ? (ccEmail || 'N/A - email vazio') : 'Nao'}`);
     logger.info(`[TERM GENERATION] Ativos selecionados: ${selectedAssets.length}`);
 
     selectedAssets.forEach((asset, i) => {
@@ -77,9 +99,12 @@ export class GenerateTermService {
     logger.info(`[PDF CONVERSION] PDF gerado: ${pdfFileName} (${pdfBuffer.length} bytes)`);
 
     // 4. Enviar PDF ao DocuSign para assinatura
+    const shouldSendCopy = sendCopyToOther && ccEmail && ccEmail.trim() && ccEmail !== signerEmail;
+
     const result = await docuSignService.sendTermEnvelope({
       recipientName: employee.fullName,
-      recipientEmail: employee.personalEmail,
+      recipientEmail: signerEmail,
+      ccEmail: shouldSendCopy ? ccEmail : undefined,
       docxBuffer: pdfBuffer,
       fileName: pdfFileName,
     });
@@ -94,6 +119,7 @@ export class GenerateTermService {
       assetsCount: selectedAssets.length,
       envelopeId: result.envelopeId,
       status: result.status,
+      recipientType,
       recipientEmail: result.recipientEmail,
       recipientName: result.recipientName,
     };

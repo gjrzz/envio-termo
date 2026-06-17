@@ -16,6 +16,8 @@ export const generateTerm = asyncHandler(async (req: Request, res: Response) => 
   const result = await generateTermService.execute({
     employee: body.employee,
     selectedAssets: body.selectedAssets,
+    recipientType: body.recipientType,
+    sendCopyToOther: body.sendCopyToOther,
   });
 
   res.status(201).json(result);

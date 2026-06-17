@@ -110,6 +110,8 @@ export const generateTermSchema = z.object({
   selectedAssets: z
     .array(selectedAssetSchema)
     .min(1, 'Selecione ao menos um equipamento para o termo'),
+  recipientType: z.enum(['personal', 'corporate']).default('personal'),
+  sendCopyToOther: z.boolean().default(true),
 });
 
 export type GenerateTermBody = z.infer<typeof generateTermSchema>;

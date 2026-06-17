@@ -426,6 +426,7 @@ export class DocuSignService {
   public async sendTermEnvelope(input: {
     recipientName: string;
     recipientEmail: string;
+    ccEmail?: string;
     docxBuffer: Buffer;
     fileName: string;
   }): Promise<{
@@ -434,18 +435,49 @@ export class DocuSignService {
     recipientEmail: string;
     recipientName: string;
   }> {
-    const { recipientName, recipientEmail: originalEmail, docxBuffer, fileName } = input;
-
-    // Override de email para testes
-    const recipientEmail = env.DOCUSIGN_OVERRIDE_RECIPIENT_EMAIL || originalEmail;
+    const { recipientName, recipientEmail, ccEmail, docxBuffer, fileName } = input;
 
     logger.info(`[DOCUSIGN TERM] === INICIANDO ENVIO DE TERMO ===`);
     logger.info(`[DOCUSIGN TERM] Colaborador: ${recipientName}`);
-    logger.info(`[DOCUSIGN TERM] Email original: ${originalEmail}`);
-    logger.info(`[DOCUSIGN TERM] Email destino: ${recipientEmail}${env.DOCUSIGN_OVERRIDE_RECIPIENT_EMAIL ? ' (OVERRIDE ATIVO)' : ''}`);
+    logger.info(`[DOCUSIGN TERM] Signer: ${recipientEmail}`);
+    logger.info(`[DOCUSIGN TERM] CC: ${ccEmail ?? '(nenhum)'}`);
     logger.info(`[DOCUSIGN TERM] Documento: ${fileName} (${docxBuffer.length} bytes)`);
 
     const accountInfo = await this.getAccountInfo();
+
+    // Montar recipients
+    const recipients: Record<string, unknown[]> = {
+      signers: [
+        {
+          email: recipientEmail,
+          name: recipientName,
+          recipientId: '1',
+          routingOrder: '1',
+          tabs: {
+            signHereTabs: [
+              {
+                anchorString: '/sn1/',
+                anchorUnits: 'pixels',
+                anchorXOffset: '20',
+                anchorYOffset: '-10',
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    if (ccEmail) {
+      recipients.carbonCopies = [
+        {
+          email: ccEmail,
+          name: recipientName,
+          recipientId: '2',
+          routingOrder: '2',
+        },
+      ];
+      logger.info(`[DOCUSIGN TERM] CC adicionado: ${ccEmail}`);
+    }
 
     // Montar envelope com PDF preenchido (sem template, sem textTabs)
     // O PDF e flat — nenhum campo editavel, apenas assinatura
@@ -460,26 +492,7 @@ export class DocuSignService {
           transformPdfFields: 'false',
         },
       ],
-      recipients: {
-        signers: [
-          {
-            email: recipientEmail,
-            name: recipientName,
-            recipientId: '1',
-            routingOrder: '1',
-            tabs: {
-              signHereTabs: [
-                {
-                  anchorString: '/sn1/',
-                  anchorUnits: 'pixels',
-                  anchorXOffset: '20',
-                  anchorYOffset: '-10',
-                },
-              ],
-            },
-          },
-        ],
-      },
+      recipients,
       status: 'sent',
     });
 

@@ -44,6 +44,8 @@ export interface GenerateTermEmployee {
 export interface GenerateTermInput {
   employee: GenerateTermEmployee;
   selectedAssets: SelectedAsset[];
+  recipientType: 'personal' | 'corporate';
+  sendCopyToOther: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export interface GenerateTermResult {
   assetsCount: number;
   envelopeId: string;
   status: string;
+  recipientType: 'personal' | 'corporate';
   recipientEmail: string;
   recipientName: string;
 }

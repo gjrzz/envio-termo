@@ -35,10 +35,6 @@ const envSchema = z.object({
 
   // DocuSign Template ID para Termo de Responsabilidade
   DOCUSIGN_TERM_TEMPLATE_ID: z.string().default('0bfcf43b-76aa-4c63-b73d-c74e803f9586'),
-
-  // Email de teste - quando definido, TODOS os termos sao enviados para
-  // este email independente do email do colaborador. Remover em producao.
-  DOCUSIGN_OVERRIDE_RECIPIENT_EMAIL: z.string().default(''),
 });
 
 function loadEnv() {
