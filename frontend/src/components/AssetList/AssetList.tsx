@@ -84,7 +84,8 @@ export function AssetList({ assets, selectedKeys, onToggle }: AssetListProps) {
               const model = asset.model ?? '';
               const serial = asset.serial ? `S/N: ${asset.serial}` : '';
               const patrimonio = asset.inventoryNumber ? `Pat: ${asset.inventoryNumber}` : '';
-              const secondary = [model, patrimonio, serial].filter(Boolean).join(' · ');
+              const status = asset.status ? `Status: ${asset.status}` : '';
+              const secondary = [model, patrimonio, serial, status].filter(Boolean).join(' · ');
 
               return (
                 <ListItem

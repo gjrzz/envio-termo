@@ -497,6 +497,7 @@ export class GLPIService {
     serialFieldId: string | null;
     otherserialFieldId: string | null;
     modelFieldId: string | null;
+    statusFieldId: string | null;
   }> {
     const optionsResponse = await this.http.get<Record<string, { table?: string; field?: string }>>(
       `/listSearchOptions/${itemtype}`,
@@ -530,6 +531,7 @@ export class GLPIService {
       serialFieldId: findFieldId(table, 'serial'),
       otherserialFieldId: findFieldId(table, 'otherserial'),
       modelFieldId: findFieldId(modelTable, 'name'),
+      statusFieldId: findFieldId('glpi_states', 'completename'),
     };
   }
 
@@ -551,7 +553,7 @@ export class GLPIService {
     query: Record<string, string>;
     raw: unknown;
   }> {
-    const { contactFieldId, idFieldId, nameFieldId, serialFieldId, otherserialFieldId, modelFieldId } = fieldIds;
+    const { contactFieldId, idFieldId, nameFieldId, serialFieldId, otherserialFieldId, modelFieldId, statusFieldId } = fieldIds;
 
     const params = new URLSearchParams();
     params.append('criteria[0][field]', contactFieldId);
@@ -575,6 +577,10 @@ export class GLPIService {
       params.append(`forcedisplay[${displayIdx++}]`, modelFieldId);
     }
 
+    if (statusFieldId) {
+      params.append(`forcedisplay[${displayIdx++}]`, statusFieldId);
+    }
+
     const query = Object.fromEntries(params.entries());
 
     const response = await this.http.get<{
@@ -593,6 +599,7 @@ export class GLPIService {
       inventoryNumber:
         otherserialFieldId && row[otherserialFieldId] != null ? String(row[otherserialFieldId]) : null,
       model: modelFieldId && row[modelFieldId] != null ? String(row[modelFieldId]) : null,
+      status: statusFieldId && row[statusFieldId] != null ? String(row[statusFieldId]) : null,
     }));
 
     return { computers, totalcount: response.data.totalcount, count: response.data.count, query, raw: response.data };
@@ -845,7 +852,7 @@ export class GLPIService {
 
     return result.computers.map((item) => {
       logger.debug(
-        `[GLPI MODEL LOOKUP] Asset ID: ${item.id} | ItemType: ${itemtype} | Model: ${item.model ?? '(vazio)'}`,
+        `[GLPI MODEL LOOKUP] Asset ID: ${item.id} | ItemType: ${itemtype} | Model: ${item.model ?? '(vazio)'} | Status: ${item.status ?? '(vazio)'}`,
       );
 
       return {
@@ -855,6 +862,7 @@ export class GLPIService {
         serial: item.serial,
         inventoryNumber: item.inventoryNumber,
         model: item.model,
+        status: item.status,
         contact: item.contact,
       };
     });
