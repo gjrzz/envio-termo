@@ -496,6 +496,8 @@ export class GLPIService {
     nameFieldId: string;
     serialFieldId: string | null;
     otherserialFieldId: string | null;
+    modelFieldId: string | null;
+    statusFieldId: string | null;
   }> {
     const optionsResponse = await this.http.get<Record<string, { table?: string; field?: string }>>(
       `/listSearchOptions/${itemtype}`,
@@ -504,10 +506,11 @@ export class GLPIService {
 
     const options = optionsResponse.data;
     const table = `glpi_${itemtype.toLowerCase()}s`;
+    const modelTable = `glpi_${itemtype.toLowerCase()}models`;
 
-    const findFieldId = (field: string): string | null => {
+    const findFieldId = (targetTable: string, field: string): string | null => {
       for (const [id, option] of Object.entries(options)) {
-        if (option && typeof option === 'object' && option.table === table && option.field === field) {
+        if (option && typeof option === 'object' && option.table === targetTable && option.field === field) {
           return id;
         }
       }
@@ -515,7 +518,7 @@ export class GLPIService {
       return null;
     };
 
-    const contactFieldId = findFieldId('contact');
+    const contactFieldId = findFieldId(table, 'contact');
 
     if (!contactFieldId) {
       throw AppError.badGateway(`Nao foi possivel localizar o campo "contact" em listSearchOptions/${itemtype}`);
@@ -523,10 +526,12 @@ export class GLPIService {
 
     return {
       contactFieldId,
-      idFieldId: findFieldId('id') ?? '2',
-      nameFieldId: findFieldId('name') ?? '1',
-      serialFieldId: findFieldId('serial'),
-      otherserialFieldId: findFieldId('otherserial'),
+      idFieldId: findFieldId(table, 'id') ?? '2',
+      nameFieldId: findFieldId(table, 'name') ?? '1',
+      serialFieldId: findFieldId(table, 'serial'),
+      otherserialFieldId: findFieldId(table, 'otherserial'),
+      modelFieldId: findFieldId(modelTable, 'name'),
+      statusFieldId: findFieldId('glpi_states', 'completename'),
     };
   }
 
@@ -548,22 +553,32 @@ export class GLPIService {
     query: Record<string, string>;
     raw: unknown;
   }> {
-    const { contactFieldId, idFieldId, nameFieldId, serialFieldId, otherserialFieldId } = fieldIds;
+    const { contactFieldId, idFieldId, nameFieldId, serialFieldId, otherserialFieldId, modelFieldId, statusFieldId } = fieldIds;
 
     const params = new URLSearchParams();
     params.append('criteria[0][field]', contactFieldId);
     params.append('criteria[0][searchtype]', searchtype);
     params.append('criteria[0][value]', contactValue);
-    params.append('forcedisplay[0]', idFieldId);
-    params.append('forcedisplay[1]', nameFieldId);
-    params.append('forcedisplay[2]', contactFieldId);
+
+    let displayIdx = 0;
+    params.append(`forcedisplay[${displayIdx++}]`, idFieldId);
+    params.append(`forcedisplay[${displayIdx++}]`, nameFieldId);
+    params.append(`forcedisplay[${displayIdx++}]`, contactFieldId);
 
     if (serialFieldId) {
-      params.append('forcedisplay[3]', serialFieldId);
+      params.append(`forcedisplay[${displayIdx++}]`, serialFieldId);
     }
 
     if (otherserialFieldId) {
-      params.append('forcedisplay[4]', otherserialFieldId);
+      params.append(`forcedisplay[${displayIdx++}]`, otherserialFieldId);
+    }
+
+    if (modelFieldId) {
+      params.append(`forcedisplay[${displayIdx++}]`, modelFieldId);
+    }
+
+    if (statusFieldId) {
+      params.append(`forcedisplay[${displayIdx++}]`, statusFieldId);
     }
 
     const query = Object.fromEntries(params.entries());
@@ -583,6 +598,8 @@ export class GLPIService {
       serial: serialFieldId && row[serialFieldId] != null ? String(row[serialFieldId]) : null,
       inventoryNumber:
         otherserialFieldId && row[otherserialFieldId] != null ? String(row[otherserialFieldId]) : null,
+      model: modelFieldId && row[modelFieldId] != null ? String(row[modelFieldId]) : null,
+      status: statusFieldId && row[statusFieldId] != null ? String(row[statusFieldId]) : null,
     }));
 
     return { computers, totalcount: response.data.totalcount, count: response.data.count, query, raw: response.data };
@@ -833,14 +850,22 @@ export class GLPIService {
     const fieldIds = await this.getAssetFieldIds(sessionToken, itemtype);
     const result = await this.searchItemsByContact(sessionToken, itemtype, fieldIds, contact, 'contains');
 
-    return result.computers.map((item) => ({
-      id: item.id,
-      itemtype,
-      name: item.name,
-      serial: item.serial,
-      inventoryNumber: item.inventoryNumber,
-      contact: item.contact,
-    }));
+    return result.computers.map((item) => {
+      logger.debug(
+        `[GLPI MODEL LOOKUP] Asset ID: ${item.id} | ItemType: ${itemtype} | Model: ${item.model ?? '(vazio)'} | Status: ${item.status ?? '(vazio)'}`,
+      );
+
+      return {
+        id: item.id,
+        itemtype,
+        name: item.name,
+        serial: item.serial,
+        inventoryNumber: item.inventoryNumber,
+        model: item.model,
+        status: item.status,
+        contact: item.contact,
+      };
+    });
   }
 
   /**

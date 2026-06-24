@@ -1,0 +1,81 @@
+/* Termina */
+@font-face {
+  font-family: 'Termina';
+  src: url('./Termina/Termina-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Termina';
+  src: url('./Termina/Termina-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Termina';
+  src: url('./Termina/Termina-Demi.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Termina';
+  src: url('./Termina/Termina-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Termina';
+  src: url('./Termina/Termina-Heavy.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Graphie */
+@font-face {
+  font-family: 'Graphie';
+  src: url('./Graphie/Dharma Type - Graphie-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphie';
+  src: url('./Graphie/Dharma Type - Graphie-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphie';
+  src: url('./Graphie/Dharma Type - Graphie-Book.otf') format('opentype');
+  font-weight: 450;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphie';
+  src: url('./Graphie/Dharma Type - Graphie-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphie';
+  src: url('./Graphie/Dharma Type - Graphie-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

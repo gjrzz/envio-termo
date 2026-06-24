@@ -6,21 +6,27 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
   Stack,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { AssetList, getAssetKey } from '../components/AssetList/AssetList';
 import { useAssignedAssets } from '../hooks/useAssignedAssets';
 import { useMondayEmployee } from '../hooks/useMondayEmployee';
-import { useSendTerm } from '../hooks/useSendTerm';
+import { useGenerateTerm } from '../hooks/useGenerateTerm';
 import { useSnackbar } from '../components/Snackbar/SnackbarProvider';
 import { ApiError } from '../services/api';
-import type { GlpiAsset } from '../types';
+import type { GenerateTermResult, GlpiAsset } from '../types';
 
 /**
  * Formata um email do colaborador, exibindo "Não informado" quando o valor
@@ -71,9 +77,12 @@ export function Result() {
     isError: isEmployeeError,
     error: employeeError,
   } = useMondayEmployee(email);
-  const sendTermMutation = useSendTerm();
+  const generateTermMutation = useGenerateTerm();
 
   const [selectedAssets, setSelectedAssets] = useState<GlpiAsset[]>([]);
+  const [generatedResult, setGeneratedResult] = useState<GenerateTermResult | null>(null);
+  const [recipientType, setRecipientType] = useState<'personal' | 'corporate'>('personal');
+  const [sendCopyToOther, setSendCopyToOther] = useState(true);
 
   const selectedKeys = useMemo(() => selectedAssets.map((asset) => getAssetKey(asset)), [selectedAssets]);
 
@@ -88,35 +97,43 @@ export function Result() {
   };
 
   const handleSendTerm = (): void => {
-    if (!assetsData) {
+    if (!employeeData) {
+      showSnackbar('Dados do colaborador não disponíveis.', 'error');
       return;
     }
 
-    sendTermMutation.mutate(
+    generateTermMutation.mutate(
       {
-        nome: assetsData.user.fullName,
-        email: assetsData.user.email,
-        equipamentos: selectedAssets.map((asset) => ({
+        employee: {
+          fullName: employeeData.fullName,
+          cpf: employeeData.cpf ?? '',
+          birthDate: employeeData.birthDate ?? '',
+          corporateEmail: employeeData.corporateEmail ?? '',
+          personalEmail: employeeData.personalEmail ?? '',
+          phone: employeeData.phone ?? '',
+        },
+        selectedAssets: selectedAssets.map((asset) => ({
           id: asset.id,
-          itemtype: asset.itemtype,
+          type: asset.itemtype,
           name: asset.name,
-          serial: asset.serial,
           inventoryNumber: asset.inventoryNumber,
+          serial: asset.serial,
+          model: asset.model,
+          contact: asset.contact,
         })),
+        recipientType,
+        sendCopyToOther,
       },
       {
-        onSuccess: (term) => {
-          showSnackbar(
-            `Termo enviado com sucesso! Envelope DocuSign: ${term.envelopeId ?? '-'}`,
-            'success',
-          );
-          navigate('/historico');
+        onSuccess: (result) => {
+          setGeneratedResult(result);
+          showSnackbar(`Termo enviado para assinatura! Envelope: ${result.envelopeId}`, 'success');
         },
         onError: (mutationError) => {
           const message =
             mutationError instanceof ApiError
               ? mutationError.message
-              : 'Falha ao enviar o termo. Tente novamente.';
+              : 'Falha ao gerar o termo. Tente novamente.';
           showSnackbar(message, 'error');
         },
       },
@@ -134,9 +151,18 @@ export function Result() {
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       <Button
+        variant="outlined"
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/')}
-        sx={{ alignSelf: 'flex-start' }}
+        sx={{
+          alignSelf: 'flex-start',
+          color: '#ffffff',
+          borderColor: 'rgba(255,255,255,0.3)',
+          '&:hover': {
+            borderColor: '#ffffff',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+          },
+        }}
       >
         Nova busca
       </Button>
@@ -150,10 +176,10 @@ export function Result() {
       {isEmployeeError && (
         <Alert severity={employeeError instanceof ApiError && employeeError.statusCode === 404 ? 'info' : 'error'}>
           {employeeError instanceof ApiError && employeeError.statusCode === 404
-            ? 'Colaborador não encontrado no Monday.com. Verifique se o email está correto.'
+            ? 'Colaborador não encontrado. Verifique se o email está correto.'
             : employeeError instanceof ApiError
               ? employeeError.message
-              : 'Falha ao buscar dados do colaborador no Monday.com.'}
+              : 'Falha ao buscar dados do colaborador.'}
         </Alert>
       )}
 
@@ -228,17 +254,89 @@ export function Result() {
               onToggle={handleToggle}
             />
 
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+              Destino do Termo
+            </Typography>
+            <FormControl component="fieldset">
+              <RadioGroup
+                value={recipientType}
+                onChange={(e) => setRecipientType(e.target.value as 'personal' | 'corporate')}
+              >
+                <FormControlLabel
+                  value="personal"
+                  control={<Radio />}
+                  label={`Email Pessoal: ${employeeData?.personalEmail || 'Não informado'}`}
+                  disabled={!employeeData?.personalEmail}
+                />
+                <FormControlLabel
+                  value="corporate"
+                  control={<Radio />}
+                  label={`Email Corporativo: ${employeeData?.corporateEmail || 'Não informado'}`}
+                  disabled={!employeeData?.corporateEmail}
+                />
+              </RadioGroup>
+            </FormControl>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={sendCopyToOther}
+                  onChange={(e) => setSendCopyToOther(e.target.checked)}
+                />
+              }
+              label={`Enviar cópia para o outro email (${recipientType === 'personal' ? employeeData?.corporateEmail || '-' : employeeData?.personalEmail || '-'})`}
+              disabled={
+                recipientType === 'personal'
+                  ? !employeeData?.corporateEmail
+                  : !employeeData?.personalEmail
+              }
+              sx={{ mt: 1 }}
+            />
+
             <Box mt={3} display="flex" justifyContent="flex-end">
               <Button
                 variant="contained"
                 size="large"
                 startIcon={<SendIcon />}
-                disabled={selectedAssets.length === 0 || sendTermMutation.isPending}
+                disabled={selectedAssets.length === 0 || generateTermMutation.isPending || !employeeData}
                 onClick={handleSendTerm}
+                sx={{ backgroundColor: '#201A47', '&:hover': { backgroundColor: '#151030' } }}
               >
-                {sendTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
+                {generateTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
               </Button>
             </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {generatedResult && (
+        <Card elevation={3} sx={{ borderLeft: 4, borderColor: 'success.main' }}>
+          <CardContent sx={{ p: 4 }}>
+            <Stack direction="row" alignItems="center" gap={1} mb={2}>
+              <CheckCircleIcon color="success" />
+              <Typography variant="h6" color="success.main">
+                Termo enviado com sucesso
+              </Typography>
+            </Stack>
+
+            <Divider sx={{ mb: 2 }} />
+
+            <Stack spacing={1}>
+              <Typography variant="body1">
+                <strong>Envelope ID:</strong> {generatedResult.envelopeId}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Status:</strong> {generatedResult.status}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Enviado para:</strong> {generatedResult.recipientName} ({generatedResult.recipientEmail})
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Equipamentos incluídos: {generatedResult.assetsCount}
+              </Typography>
+            </Stack>
           </CardContent>
         </Card>
       )}
