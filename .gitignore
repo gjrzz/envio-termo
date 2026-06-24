@@ -8,7 +8,9 @@ build/
 # Environment variables
 .env
 .env.local
+.env.example
 *.env
+*.pem
 
 # Database
 *.sqlite
