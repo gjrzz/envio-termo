@@ -21,15 +21,15 @@ export class UserRepository {
   }
 
   public findAll(): UserRecord[] {
-    return db.prepare('SELECT * FROM users ORDER BY name ASC').all() as UserRecord[];
+    return db.prepare('SELECT * FROM users ORDER BY name ASC').all() as unknown as UserRecord[];
   }
 
   public findById(id: number): UserRecord | null {
-    return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRecord) ?? null;
+    return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as unknown as UserRecord) ?? null;
   }
 
   public findByEmail(email: string): UserRecord | null {
-    return (db.prepare('SELECT * FROM users WHERE email = ?').get(email) as UserRecord) ?? null;
+    return (db.prepare('SELECT * FROM users WHERE email = ?').get(email) as unknown as UserRecord) ?? null;
   }
 
   public update(id: number, name: string, email: string): void {
