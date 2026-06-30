@@ -21,9 +21,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Cria o primeiro usuario admin se o banco estiver vazio.
-   */
   public async ensureDefaultUser(): Promise<void> {
     if (userRepository.count() === 0) {
       const hashedPassword = await bcrypt.hash('admin123', SALT_ROUNDS);
@@ -31,9 +28,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Autentica um usuario pelo email e senha, retornando o token JWT.
-   */
   public async login(email: string, password: string): Promise<{ token: string; user: UserPublic }> {
     const user = userRepository.findByEmail(email);
 
@@ -52,9 +46,6 @@ export class AuthService {
     return { token, user: this.toPublic(user) };
   }
 
-  /**
-   * Verifica e decodifica um token JWT, retornando o userId.
-   */
   public verifyToken(token: string): { userId: number } {
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as { userId: number };
@@ -64,9 +55,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Registra um novo usuario.
-   */
   public async createUser(name: string, email: string, password: string): Promise<UserPublic> {
     const existing = userRepository.findByEmail(email);
 
@@ -80,16 +68,10 @@ export class AuthService {
     return this.toPublic(user);
   }
 
-  /**
-   * Lista todos os usuarios (sem senha).
-   */
   public listUsers(): UserPublic[] {
     return userRepository.findAll().map(this.toPublic);
   }
 
-  /**
-   * Atualiza nome e email de um usuario.
-   */
   public updateUser(id: number, name: string, email: string): UserPublic {
     const user = userRepository.findById(id);
 
@@ -109,9 +91,6 @@ export class AuthService {
     return this.toPublic(updated);
   }
 
-  /**
-   * Altera a senha de um usuario (requer senha atual).
-   */
   public async changePassword(id: number, currentPassword: string, newPassword: string): Promise<void> {
     const user = userRepository.findById(id);
 
@@ -129,9 +108,6 @@ export class AuthService {
     userRepository.updatePassword(id, hashedPassword);
   }
 
-  /**
-   * Exclui um usuario pelo ID.
-   */
   public deleteUser(id: number): void {
     const user = userRepository.findById(id);
 

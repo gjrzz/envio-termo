@@ -22,7 +22,7 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/users
+ * GET /api/users-management
  */
 export const listUsers = asyncHandler(async (_req: Request, res: Response) => {
   const users = authService.listUsers();
@@ -30,7 +30,7 @@ export const listUsers = asyncHandler(async (_req: Request, res: Response) => {
 });
 
 /**
- * POST /api/users
+ * POST /api/users-management
  */
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
@@ -39,7 +39,7 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/users/:id
+ * PUT /api/users-management/:id
  */
 export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
@@ -49,7 +49,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * DELETE /api/users/:id
+ * DELETE /api/users-management/:id
  */
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(req.params.id);

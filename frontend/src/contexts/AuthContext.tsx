@@ -25,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (token) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       apiClient
         .get('/auth/me')
         .then((res) => setUser(res.data))
@@ -33,7 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null);
           setUser(null);
           localStorage.removeItem('token');
-          delete apiClient.defaults.headers.common['Authorization'];
         })
         .finally(() => setIsLoading(false));
     } else {
@@ -45,14 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await apiClient.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = response.data;
     localStorage.setItem('token', newToken);
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     setToken(newToken);
     setUser(newUser);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
-    delete apiClient.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
   }, []);
