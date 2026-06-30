@@ -302,7 +302,7 @@ export function Result() {
                 startIcon={<SendIcon />}
                 disabled={selectedAssets.length === 0 || generateTermMutation.isPending || !employeeData}
                 onClick={handleSendTerm}
-                sx={{ backgroundColor: '#201A47', '&:hover': { backgroundColor: '#151030' } }}
+                sx={{ backgroundColor: '#57489c', '&:hover': { backgroundColor: '#413575' } }}
               >
                 {generateTermMutation.isPending ? 'Enviando...' : 'Enviar Termo'}
               </Button>

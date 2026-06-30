@@ -10,11 +10,11 @@ import backgroundImg from '../../background/background.png';
 
 const navButtonSx = {
   color: 'rgba(255, 255, 255, 0.7)',
-  fontSize: '0.82rem',
+  fontSize: '0.85rem',
   fontWeight: 500,
   px: 2,
   py: 0.8,
-  borderRadius: 2,
+  borderRadius: 1.5,
   textTransform: 'none',
   '&:hover': {
     color: '#ffffff',
@@ -22,21 +22,19 @@ const navButtonSx = {
   },
   '&.active': {
     color: '#ffffff',
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     fontWeight: 600,
   },
 };
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return (parts[0]?.[0] ?? '?').toUpperCase();
 }
 
 /**
- * Layout corporativo Monte Bravo - navbar refinada com avatar.
+ * Layout corporativo Monte Bravo - navbar cinza original com avatar.
  */
 export function Layout() {
   const { user, logout } = useAuth();
@@ -76,7 +74,7 @@ export function Layout() {
         },
       }}
     >
-      <AppBar position="sticky" sx={{ backdropFilter: 'blur(16px)', backgroundColor: 'rgba(20, 16, 48, 0.85)' }}>
+      <AppBar position="sticky" elevation={0} sx={{ backgroundColor: 'rgba(36, 36, 36, 0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Toolbar sx={{ px: { xs: 2, md: 4 }, minHeight: { xs: 56, md: 64 } }}>
           {/* Logo */}
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexGrow: 1 }}>
@@ -85,36 +83,40 @@ export function Layout() {
                 color: '#ffffff',
                 fontFamily: '"Termina", sans-serif',
                 fontWeight: 700,
-                fontSize: '1.05rem',
+                fontSize: '1.1rem',
                 letterSpacing: '-0.02em',
               }}
             >
               montebravo
             </Typography>
-            <Box sx={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             <Typography
               variant="body2"
-              sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', fontWeight: 400 }}
+              sx={{
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '0.75rem',
+                borderLeft: '1px solid rgba(255,255,255,0.15)',
+                pl: 1.5,
+              }}
             >
               Termos de Responsabilidade
             </Typography>
           </Stack>
 
-          {/* Nav */}
+          {/* Nav buttons */}
           <Stack direction="row" spacing={0.5} alignItems="center">
-            <Button component={NavLink} to="/" startIcon={<HomeIcon sx={{ fontSize: 17 }} />} sx={navButtonSx} end>
+            <Button component={NavLink} to="/" startIcon={<HomeIcon sx={{ fontSize: 18 }} />} sx={navButtonSx} end>
               Início
             </Button>
-            <Button component={NavLink} to="/historico" startIcon={<HistoryIcon sx={{ fontSize: 17 }} />} sx={navButtonSx}>
+            <Button component={NavLink} to="/historico" startIcon={<HistoryIcon sx={{ fontSize: 18 }} />} sx={navButtonSx}>
               Histórico
             </Button>
-            <Button component={NavLink} to="/usuarios" startIcon={<PeopleIcon sx={{ fontSize: 17 }} />} sx={navButtonSx}>
+            <Button component={NavLink} to="/usuarios" startIcon={<PeopleIcon sx={{ fontSize: 18 }} />} sx={navButtonSx}>
               Usuários
             </Button>
 
-            <Box sx={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.12)', mx: 1.5 }} />
+            <Box sx={{ borderLeft: '1px solid rgba(255,255,255,0.15)', height: 24, mx: 1.5 }} />
 
-            {/* Avatar + Menu */}
+            {/* Avatar */}
             <IconButton onClick={handleMenuOpen} sx={{ p: 0.5 }}>
               <Avatar
                 src={user?.avatar || undefined}
@@ -123,7 +125,7 @@ export function Layout() {
                   height: 34,
                   fontSize: '0.8rem',
                   fontWeight: 700,
-                  backgroundColor: '#635D80',
+                  backgroundColor: '#57489c',
                   border: '2px solid rgba(255,255,255,0.2)',
                 }}
               >
@@ -164,9 +166,9 @@ export function Layout() {
         component="footer"
         textAlign="center"
         py={2.5}
-        sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}
+        sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}
       >
-        <Typography variant="body2" fontSize="0.72rem" sx={{ color: 'rgba(255,255,255,0.35)' }}>
+        <Typography variant="body2" fontSize="0.75rem" sx={{ color: 'rgba(255,255,255,0.4)' }}>
           Monte Bravo Investimentos &middot; Sistema de Termos de Responsabilidade
         </Typography>
       </Box>

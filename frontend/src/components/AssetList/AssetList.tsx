@@ -124,7 +124,7 @@ export function AssetList({ assets, selectedKeys, onToggle }: AssetListProps) {
                                 height: 20,
                                 fontSize: '0.65rem',
                                 fontWeight: 600,
-                                backgroundColor: '#201A47',
+                                backgroundColor: '#57489c',
                                 color: '#fff',
                               }}
                             />

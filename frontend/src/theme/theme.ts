@@ -146,11 +146,11 @@ export const theme = createTheme({
           transition: 'all 0.2s ease',
         },
         contained: {
-          backgroundColor: '#201A47',
+          backgroundColor: '#57489c',
           '&:hover': {
-            backgroundColor: '#151030',
+            backgroundColor: '#413575',
             transform: 'translateY(-1px)',
-            boxShadow: '0 4px 12px rgba(32, 26, 71, 0.2)',
+            boxShadow: '0 4px 12px rgba(87, 72, 156, 0.3)',
           },
           '&:active': {
             transform: 'translateY(0)',
@@ -162,17 +162,17 @@ export const theme = createTheme({
           },
         },
         outlined: {
-          borderColor: 'rgba(32, 26, 71, 0.2)',
-          color: '#201A47',
+          borderColor: 'rgba(87, 72, 156, 0.3)',
+          color: '#57489c',
           '&:hover': {
-            borderColor: '#201A47',
-            backgroundColor: 'rgba(32, 26, 71, 0.04)',
+            borderColor: '#57489c',
+            backgroundColor: 'rgba(87, 72, 156, 0.06)',
           },
         },
         text: {
-          color: '#201A47',
+          color: '#57489c',
           '&:hover': {
-            backgroundColor: 'rgba(32, 26, 71, 0.04)',
+            backgroundColor: 'rgba(87, 72, 156, 0.06)',
           },
         },
       },
@@ -203,7 +203,7 @@ export const theme = createTheme({
             borderRadius: 8,
             backgroundColor: '#ffffff',
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#201A47',
+              borderColor: '#57489c',
               borderWidth: 2,
             },
           },
@@ -230,7 +230,7 @@ export const theme = createTheme({
         root: {
           color: '#7F808F',
           '&.Mui-checked': {
-            color: '#201A47',
+            color: '#57489c',
           },
         },
       },
@@ -240,7 +240,7 @@ export const theme = createTheme({
         root: {
           color: '#7F808F',
           '&.Mui-checked': {
-            color: '#201A47',
+            color: '#57489c',
           },
         },
       },
