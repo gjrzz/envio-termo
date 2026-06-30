@@ -147,8 +147,8 @@ export function Users() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 500_000) {
-      showSnackbar('Imagem muito grande. Maximo 500KB.', 'warning');
+    if (file.size > 2_000_000) {
+      showSnackbar('Imagem muito grande. Maximo 2MB.', 'warning');
       return;
     }
 
