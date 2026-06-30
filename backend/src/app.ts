@@ -10,10 +10,10 @@ export function createApp(): Express {
 
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
+      origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
     }),
   );
-  app.use(express.json());
+  app.use(express.json({ limit: '2mb' }));
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
   app.use('/api', routes);

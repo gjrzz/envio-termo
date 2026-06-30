@@ -6,6 +6,7 @@ export interface UserRecord {
   name: string;
   email: string;
   password: string;
+  avatar: string | null;
   createdAt: string;
 }
 
@@ -16,5 +17,6 @@ export interface UserPublic {
   id: number;
   name: string;
   email: string;
+  avatar: string | null;
   createdAt: string;
 }

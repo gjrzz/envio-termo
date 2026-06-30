@@ -1,6 +1,7 @@
 import { docxGeneratorService, mapAssetType } from './DocxGeneratorService';
 import { pdfConverterService } from './PdfConverterService';
 import { docuSignService } from './DocuSignService';
+import { termRepository } from '../repositories/TermRepository';
 import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import type {
@@ -113,6 +114,20 @@ export class GenerateTermService {
     logger.info(`[TERM GENERATION] EnvelopeId: ${result.envelopeId}`);
     logger.info(`[TERM GENERATION] Enviado para: ${result.recipientEmail}`);
 
+    // 5. Persistir no banco para historico
+    termRepository.create({
+      nome: employee.fullName,
+      email: signerEmail,
+      equipamentos: selectedAssets.map((a) => ({
+        id: a.id,
+        itemtype: a.type,
+        name: a.name,
+        serial: a.serial,
+        inventoryNumber: a.inventoryNumber,
+      })),
+      envelopeId: result.envelopeId,
+      status: result.status,
+    });
     return {
       success: true,
       employee: employeeData,

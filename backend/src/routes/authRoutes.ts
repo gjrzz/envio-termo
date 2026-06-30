@@ -7,6 +7,7 @@ import {
   updateUser,
   deleteUser,
   changePassword,
+  updateAvatar,
 } from '../controllers/authController';
 import { requireAuth } from '../middleware/auth';
 
@@ -18,6 +19,7 @@ router.post('/auth/login', login);
 // Protegido
 router.get('/auth/me', requireAuth, getMe);
 router.put('/auth/change-password', requireAuth, changePassword);
+router.put('/auth/avatar', requireAuth, updateAvatar);
 
 // CRUD de usuarios (protegido)
 router.get('/users-management', requireAuth, listUsers);
