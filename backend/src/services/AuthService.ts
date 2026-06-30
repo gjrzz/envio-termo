@@ -17,6 +17,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      avatar: user.avatar,
       createdAt: user.createdAt,
     };
   }
@@ -72,6 +73,11 @@ export class AuthService {
     return userRepository.findAll().map(this.toPublic);
   }
 
+  public getUserById(id: number): UserPublic | null {
+    const user = userRepository.findById(id);
+    return user ? this.toPublic(user) : null;
+  }
+
   public updateUser(id: number, name: string, email: string): UserPublic {
     const user = userRepository.findById(id);
 
@@ -106,6 +112,19 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
     userRepository.updatePassword(id, hashedPassword);
+  }
+
+  public updateAvatar(id: number, avatar: string | null): UserPublic {
+    const user = userRepository.findById(id);
+
+    if (!user) {
+      throw AppError.notFound('Usuario nao encontrado');
+    }
+
+    userRepository.updateAvatar(id, avatar);
+
+    const updated = userRepository.findById(id)!;
+    return this.toPublic(updated);
   }
 
   public deleteUser(id: number): void {

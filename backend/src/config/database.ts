@@ -34,6 +34,7 @@ function migrate(): void {
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
+      avatar TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);

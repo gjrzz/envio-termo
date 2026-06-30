@@ -16,8 +16,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).userId as number;
-  const users = authService.listUsers();
-  const user = users.find((u) => u.id === userId);
+  const user = authService.getUserById(userId);
   res.status(200).json(user);
 });
 
@@ -65,4 +64,15 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
   const { currentPassword, newPassword } = req.body;
   await authService.changePassword(userId, currentPassword, newPassword);
   res.status(200).json({ message: 'Senha alterada com sucesso' });
+});
+
+/**
+ * PUT /api/auth/avatar
+ * Body: { avatar: string (base64 data URL) }
+ */
+export const updateAvatar = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).userId as number;
+  const { avatar } = req.body;
+  const user = authService.updateAvatar(userId, avatar || null);
+  res.status(200).json(user);
 });

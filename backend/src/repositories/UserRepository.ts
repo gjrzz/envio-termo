@@ -40,6 +40,10 @@ export class UserRepository {
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, id);
   }
 
+  public updateAvatar(id: number, avatar: string | null): void {
+    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar, id);
+  }
+
   public delete(id: number): void {
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
   }
