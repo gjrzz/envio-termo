@@ -38,6 +38,13 @@ function migrate(): void {
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Adicionar coluna avatar se a tabela ja existia sem ela
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+  } catch {
+    // Coluna ja existe — ignorar
+  }
 }
 
 migrate();

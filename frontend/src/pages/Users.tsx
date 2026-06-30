@@ -174,22 +174,24 @@ export function Users() {
     {
       field: 'avatar',
       headerName: '',
-      width: 60,
+      width: 56,
       sortable: false,
       filterable: false,
+      disableColumnMenu: true,
       renderCell: (params) => (
-        <Avatar src={params.value || undefined} sx={{ width: 32, height: 32, fontSize: '0.75rem', backgroundColor: '#635D80' }}>
-          {getInitials(params.row.name)}
-        </Avatar>
+        <Box display="flex" alignItems="center" justifyContent="center" height="100%">
+          <Avatar src={params.value || undefined} sx={{ width: 32, height: 32, fontSize: '0.75rem', backgroundColor: '#57489c' }}>
+            {getInitials(params.row.name)}
+          </Avatar>
+        </Box>
       ),
     },
-    { field: 'name', headerName: 'Nome', flex: 1, minWidth: 180 },
-    { field: 'email', headerName: 'Email', flex: 1, minWidth: 220 },
+    { field: 'name', headerName: 'Nome', flex: 1, minWidth: 150 },
+    { field: 'email', headerName: 'Email', flex: 1.2, minWidth: 200 },
     {
       field: 'createdAt',
       headerName: 'Criado em',
-      flex: 1,
-      minWidth: 160,
+      width: 160,
       valueFormatter: (value: string) => {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
@@ -198,11 +200,12 @@ export function Users() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: 120,
+      width: 100,
       sortable: false,
       filterable: false,
+      disableColumnMenu: true,
       renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
+        <Stack direction="row" spacing={0.5} alignItems="center" height="100%">
           <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
             <EditIcon fontSize="small" />
           </IconButton>
