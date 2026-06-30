@@ -24,6 +24,28 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Logout automatico quando o token expira (401) + normalizar erros
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ error?: string; details?: unknown }>) => {
+    // Redirect para login se token expirou (exceto na propria rota de login)
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    const statusCode = error.response?.status;
+    const message =
+      error.response?.data?.error ??
+      (error.request
+        ? 'Nao foi possivel conectar ao servidor. Verifique sua conexao.'
+        : error.message);
+
+    return Promise.reject(new ApiError(message, statusCode, error.response?.data?.details));
+  },
+);
+
 /**
  * Erro normalizado lancado pelas chamadas a API, com a mensagem amigavel
  * vinda do backend (quando disponivel).
@@ -39,20 +61,6 @@ export class ApiError extends Error {
     this.details = details;
   }
 }
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError<{ error?: string; details?: unknown }>) => {
-    const statusCode = error.response?.status;
-    const message =
-      error.response?.data?.error ??
-      (error.request
-        ? 'Nao foi possivel conectar ao servidor. Verifique sua conexao.'
-        : error.message);
-
-    return Promise.reject(new ApiError(message, statusCode, error.response?.data?.details));
-  },
-);
 
 /**
  * Busca o colaborador e os equipamentos atribuidos a ele no GLPI a partir
