@@ -233,11 +233,11 @@ export function Users() {
                 position: 'absolute',
                 bottom: -4,
                 right: -4,
-                backgroundColor: '#201A47',
+                backgroundColor: '#57489c',
                 color: '#fff',
                 width: 28,
                 height: 28,
-                '&:hover': { backgroundColor: '#151030' },
+                '&:hover': { backgroundColor: '#413575' },
               }}
             >
               <PhotoCameraIcon sx={{ fontSize: 14 }} />
