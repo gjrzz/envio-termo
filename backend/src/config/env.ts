@@ -27,6 +27,9 @@ const envSchema = z.object({
 
   DATABASE_PATH: z.string().default('./data/database.sqlite'),
 
+  // Segredo para assinar tokens JWT de autenticacao
+  JWT_SECRET: z.string().min(1).default('change-me-in-production'),
+
   // Pasta local onde os DOCX gerados serao salvos (sincronizada pelo OneDrive)
   GENERATED_TERMS_PATH: z.string().min(1),
 
