@@ -1,7 +1,10 @@
 import { AppBar, Box, Button, Container, Stack, Toolbar, Typography } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import HomeIcon from '@mui/icons-material/Home';
+import PeopleIcon from '@mui/icons-material/People';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import backgroundImg from '../../background/background.png';
 
 const navButtonSx = {
@@ -24,6 +27,8 @@ const navButtonSx = {
  * Layout corporativo Monte Bravo - background com imagem + overlay escuro.
  */
 export function Layout() {
+  const { user, logout } = useAuth();
+
   return (
     <Box
       display="flex"
@@ -71,12 +76,33 @@ export function Layout() {
             </Typography>
           </Stack>
 
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} alignItems="center">
             <Button component={NavLink} to="/" startIcon={<HomeIcon sx={{ fontSize: 18 }} />} sx={navButtonSx} end>
               Início
             </Button>
             <Button component={NavLink} to="/historico" startIcon={<HistoryIcon sx={{ fontSize: 18 }} />} sx={navButtonSx}>
               Histórico
+            </Button>
+            <Button component={NavLink} to="/usuarios" startIcon={<PeopleIcon sx={{ fontSize: 18 }} />} sx={navButtonSx}>
+              Usuários
+            </Button>
+
+            <Box sx={{ borderLeft: '1px solid rgba(255,255,255,0.15)', height: 24, mx: 1 }} />
+
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', mr: 1 }}>
+              {user?.name}
+            </Typography>
+            <Button
+              onClick={logout}
+              startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
+              sx={{
+                ...navButtonSx,
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: '0.8rem',
+                px: 1.5,
+              }}
+            >
+              Sair
             </Button>
           </Stack>
         </Toolbar>

@@ -15,6 +15,15 @@ export const apiClient = axios.create({
   timeout: 30_000,
 });
 
+// Injeta o token JWT em todas as requisicoes caso exista no localStorage
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 /**
  * Erro normalizado lancado pelas chamadas a API, com a mensagem amigavel
  * vinda do backend (quando disponivel).
