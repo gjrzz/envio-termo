@@ -10,19 +10,21 @@ services:
       - '4000:4000'
     volumes:
       - backend-data:/app/data
+      - ./backend/data/colaboradores.xlsx:/app/data/colaboradores.xlsx:ro
+      - ./backend/templates:/app/templates:ro
       - ./backend/docusign_private_key.pem:/app/docusign_private_key.pem:ro
 
   frontend:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+        VITE_API_URL: /api
     container_name: envio-termo-frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - '5173:80'
+      - '80:80'
 
 volumes:
   backend-data:

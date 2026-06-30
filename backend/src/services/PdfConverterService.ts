@@ -6,27 +6,26 @@ import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 
 /**
- * Servico de conversao DOCX para PDF utilizando Microsoft Word via
- * PowerShell COM automation.
+ * Servico de conversao DOCX para PDF utilizando LibreOffice em modo
+ * headless.
  *
- * Requisito: Microsoft Word instalado na maquina.
+ * Requisito: LibreOffice instalado na maquina (Ubuntu: `sudo apt install libreoffice-writer`).
  */
 export class PdfConverterService {
   /**
-   * Converte um buffer DOCX em buffer PDF usando o Microsoft Word
-   * instalado na maquina, via PowerShell COM automation.
+   * Converte um buffer DOCX em buffer PDF usando LibreOffice headless.
    *
    * O processo:
    * 1. Salva o DOCX em arquivo temporario
-   * 2. Executa PowerShell que abre o DOCX no Word e exporta como PDF
+   * 2. Executa `soffice --headless --convert-to pdf`
    * 3. Le o PDF gerado
    * 4. Remove os arquivos temporarios
    */
   public convert(docxBuffer: Buffer, fileName: string): Buffer {
-    const tmpDir = os.tmpdir();
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'termo-pdf-'));
     const baseName = fileName.replace(/\.docx$/i, '');
-    const docxPath = path.join(tmpDir, `${baseName}_${Date.now()}.docx`);
-    const pdfPath = docxPath.replace(/\.docx$/i, '.pdf');
+    const docxPath = path.join(tmpDir, `${baseName}.docx`);
+    const pdfPath = path.join(tmpDir, `${baseName}.pdf`);
 
     logger.info(`[PDF CONVERSION] Iniciando conversao: ${fileName}`);
     logger.info(`[PDF CONVERSION] DOCX temp: ${docxPath}`);
@@ -36,24 +35,10 @@ export class PdfConverterService {
       // 1. Salvar DOCX temporario
       fs.writeFileSync(docxPath, docxBuffer);
 
-      // 2. Converter via PowerShell + Word COM
-      const psScript = `
-$word = New-Object -ComObject Word.Application
-$word.Visible = $false
-$word.DisplayAlerts = 0
-try {
-  $doc = $word.Documents.Open('${docxPath.replace(/\\/g, '\\\\')}')
-  $doc.SaveAs([ref]'${pdfPath.replace(/\\/g, '\\\\')}', [ref]17)
-  $doc.Close([ref]0)
-} finally {
-  $word.Quit([ref]0)
-  [System.Runtime.Interopservices.Marshal]::ReleaseComObject($word) | Out-Null
-}
-`.trim();
-
+      // 2. Converter via LibreOffice headless
       execSync(
-        `powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, '; ')}"`,
-        { timeout: 30_000, windowsHide: true },
+        `soffice --headless --norestore --convert-to pdf --outdir "${tmpDir}" "${docxPath}"`,
+        { timeout: 60_000, stdio: 'pipe' },
       );
 
       // 3. Ler PDF gerado
@@ -72,8 +57,7 @@ try {
       throw AppError.badGateway(`Falha ao converter DOCX para PDF: ${message}`);
     } finally {
       // 4. Limpar temporarios
-      try { fs.unlinkSync(docxPath); } catch { /* ignore */ }
-      try { fs.unlinkSync(pdfPath); } catch { /* ignore */ }
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
     }
   }
 }
