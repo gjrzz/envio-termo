@@ -10,11 +10,12 @@ import {
   updateAvatar,
 } from '../controllers/authController';
 import { requireAuth } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 
 const router = Router();
 
-// Publico
-router.post('/auth/login', login);
+// Publico (rate limit: 5 tentativas por minuto por IP)
+router.post('/auth/login', rateLimit(5, 60_000), login);
 
 // Protegido
 router.get('/auth/me', requireAuth, getMe);

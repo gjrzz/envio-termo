@@ -8,6 +8,9 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 export function createApp(): Express {
   const app = express();
 
+  // Confiar no proxy reverso (nginx) para obter o IP real do cliente
+  app.set('trust proxy', 1);
+
   app.use(
     cors({
       origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
