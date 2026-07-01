@@ -4,7 +4,6 @@ import type {
   GenerateTermInput,
   GenerateTermResult,
   MondayEmployee,
-  SendTermInput,
   TermRecord,
 } from '../types';
 
@@ -87,29 +86,10 @@ export async function getMondayEmployee(email: string): Promise<MondayEmployee> 
 }
 
 /**
- * Envia o termo de responsabilidade com os equipamentos selecionados,
- * criando o envelope no DocuSign.
- */
-export async function sendTerm(input: SendTermInput): Promise<TermRecord> {
-  const response = await apiClient.post<TermRecord>('/terms/send', input);
-
-  return response.data;
-}
-
-/**
  * Lista o historico de termos enviados.
  */
 export async function listTerms(): Promise<TermRecord[]> {
   const response = await apiClient.get<TermRecord[]>('/terms');
-
-  return response.data;
-}
-
-/**
- * Retorna os detalhes de um termo especifico.
- */
-export async function getTermById(id: number): Promise<TermRecord> {
-  const response = await apiClient.get<TermRecord>(`/terms/${id}`);
 
   return response.data;
 }

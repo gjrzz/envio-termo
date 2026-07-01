@@ -2,7 +2,6 @@ import axios, { type AxiosInstance, AxiosError } from 'axios';
 import { env } from '../config/env';
 import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
-import type { MondayColumn, MondayDebugResult, MondaySampleResult } from '../types/monday';
 import type { Employee } from '../types/employee';
 
 const MONDAY_API_URL = 'https://api.monday.com/v2';
@@ -24,16 +23,7 @@ const EMPLOYEE_COLUMN_IDS = [
   COLUMN_TELEFONE,
 ];
 
-/**
- * Tamanho de pagina usado ao percorrer os itens da board em busca de um
- * colaborador pelo email.
- */
 const ITEMS_PAGE_SIZE = 100;
-
-/**
- * Numero maximo de paginas percorridas ao buscar um colaborador pelo email,
- * para evitar loops descontrolados em boards muito grandes.
- */
 const MAX_ITEMS_PAGES = 20;
 
 interface MondayGraphQLError {
@@ -43,14 +33,6 @@ interface MondayGraphQLError {
 interface MondayGraphQLResponse<T> {
   data?: T;
   errors?: MondayGraphQLError[];
-}
-
-interface MondayBoardColumnsData {
-  boards: Array<{
-    id: string;
-    name: string;
-    columns: MondayColumn[];
-  }>;
 }
 
 interface MondayItemColumnValueRaw {
@@ -79,26 +61,6 @@ interface MondayNextPageData {
   next_items_page: MondayItemsPage;
 }
 
-interface MondaySampleData {
-  boards: Array<{
-    id: string;
-    name: string;
-    columns: MondayColumn[];
-    items_page: {
-      items: Array<{
-        id: string;
-        name: string;
-        column_values: Array<{
-          id: string;
-          text: string | null;
-          value: string | null;
-          type: string;
-        }>;
-      }>;
-    };
-  }>;
-}
-
 /**
  * Servico de integracao com a API GraphQL (v2) do Monday.com.
  *
@@ -120,9 +82,6 @@ export class MondayService {
     });
   }
 
-  /**
-   * Executa uma query/mutation GraphQL na API do Monday.com.
-   */
   private async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     try {
       const response = await this.http.post<MondayGraphQLResponse<T>>('', {
@@ -168,107 +127,8 @@ export class MondayService {
   }
 
   /**
-   * Consulta a board configurada (MONDAY_BOARD_ID) e retorna seu id, nome
-   * e a lista completa de colunas.
-   */
-  async getBoardDebugInfo(): Promise<MondayDebugResult> {
-    const query = `
-      query ($boardId: [ID!]) {
-        boards(ids: $boardId) {
-          id
-          name
-          columns {
-            id
-            title
-            type
-          }
-        }
-      }
-    `;
-
-    const data = await this.query<MondayBoardColumnsData>(query, {
-      boardId: [env.MONDAY_BOARD_ID],
-    });
-
-    const board = data.boards[0];
-
-    if (!board) {
-      throw AppError.notFound(`Board ${env.MONDAY_BOARD_ID} nao encontrada no Monday.com`);
-    }
-
-    return {
-      board: { id: board.id, name: board.name },
-      columns: board.columns,
-    };
-  }
-
-  /**
-   * Consulta os primeiros itens da board configurada (MONDAY_BOARD_ID),
-   * retornando todos os campos (column_values) disponiveis em cada item.
-   */
-  async getSampleItems(limit = 5): Promise<MondaySampleResult> {
-    const query = `
-      query ($boardId: [ID!], $limit: Int!) {
-        boards(ids: $boardId) {
-          id
-          name
-          columns {
-            id
-            title
-            type
-          }
-          items_page(limit: $limit) {
-            items {
-              id
-              name
-              column_values {
-                id
-                text
-                value
-                type
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await this.query<MondaySampleData>(query, {
-      boardId: [env.MONDAY_BOARD_ID],
-      limit,
-    });
-
-    const board = data.boards[0];
-
-    if (!board) {
-      throw AppError.notFound(`Board ${env.MONDAY_BOARD_ID} nao encontrada no Monday.com`);
-    }
-
-    const columnTitles = new Map(board.columns.map((column) => [column.id, column]));
-
-    return {
-      board: { id: board.id, name: board.name },
-      items: board.items_page.items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        columnValues: item.column_values.map((columnValue) => ({
-          id: columnValue.id,
-          title: columnTitles.get(columnValue.id)?.title ?? columnValue.id,
-          type: columnValue.type,
-          text: columnValue.text,
-          value: columnValue.value,
-        })),
-      })),
-    };
-  }
-
-  /**
    * Busca, na board configurada (MONDAY_BOARD_ID), o item cujo email
    * corporativo corresponda ao email informado.
-   *
-   * O email corporativo e obtido da coluna "Sugestao de E-mail"
-   * (text_mkwppmb0) quando preenchida, ou da coluna "Qual o e-mail de
-   * contato do profissional?" (texto5) como alternativa.
    */
   async getEmployeeByEmail(email: string): Promise<Employee> {
     const normalizedEmail = email.trim().toLowerCase();
@@ -281,11 +141,6 @@ export class MondayService {
     do {
       const items = await this.fetchItemsPage(cursor);
       page += 1;
-
-      logger.debug('Pagina de itens do Monday.com carregada', {
-        page,
-        items: items.items.length,
-      });
 
       for (const item of items.items) {
         const columnValues = new Map(item.column_values.map((column) => [column.id, column.text]));
@@ -317,20 +172,9 @@ export class MondayService {
       cursor = items.cursor;
     } while (cursor && page < MAX_ITEMS_PAGES);
 
-    logger.warn('Colaborador nao encontrado no Monday.com', {
-      email: normalizedEmail,
-      pagesChecked: page,
-    });
-
     throw AppError.notFound(`Nenhum colaborador encontrado no Monday.com para o email ${email}`);
   }
 
-  /**
-   * Busca uma pagina de itens da board configurada (MONDAY_BOARD_ID),
-   * trazendo apenas o nome do item e as colunas mapeadas para os dados do
-   * colaborador. Quando `cursor` e informado, busca a proxima pagina
-   * usando `next_items_page`.
-   */
   private async fetchItemsPage(cursor: string | null): Promise<MondayItemsPage> {
     if (!cursor) {
       const query = `

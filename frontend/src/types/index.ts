@@ -55,15 +55,6 @@ export interface EquipmentItem {
 }
 
 /**
- * Payload enviado ao backend para criar/enviar um termo.
- */
-export interface SendTermInput {
-  nome: string;
-  email: string;
-  equipamentos: EquipmentItem[];
-}
-
-/**
  * Registro de termo retornado pelo backend.
  */
 export interface TermRecord {

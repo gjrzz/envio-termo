@@ -15,67 +15,8 @@ export const idParamSchema = z.object({
   id: z.coerce.number().int().positive('O id deve ser um numero positivo'),
 });
 
-/**
- * Equipamento selecionado pelo usuario na tela de resultado.
- */
-export const equipmentItemSchema = z.object({
-  id: z.number().int(),
-  itemtype: z.string().min(1),
-  name: z.string().min(1),
-  serial: z.string().nullable(),
-  inventoryNumber: z.string().nullable(),
-});
-
-/**
- * Payload de criacao/envio de um Termo de Responsabilidade.
- */
-export const sendTermSchema = z.object({
-  nome: z.string().min(1, 'O nome do colaborador e obrigatorio'),
-  email: z.string().email('Informe um email valido'),
-  equipamentos: z
-    .array(equipmentItemSchema)
-    .min(1, 'Selecione ao menos um equipamento para o termo'),
-});
-
-/**
- * Valida o query param `email` da rota de debug
- * GET /api/glpi/debug/users.
- */
-export const glpiDebugUsersQuerySchema = z.object({
-  email: z.string().email('Informe um email valido'),
-});
-
-/**
- * Valida o query param `query` da rota de debug
- * GET /api/glpi/debug/user-search.
- */
-export const glpiDebugUserSearchQuerySchema = z.object({
-  query: z.string().min(1, 'Informe um texto de busca'),
-});
-
-/**
- * Valida o query param `value` da rota de debug
- * GET /api/glpi/debug/computer/:id.
- */
-export const glpiDebugComputerQuerySchema = z.object({
-  value: z.string().min(1, 'Informe o valor a ser pesquisado'),
-});
-
-/**
- * Valida o query param `contact` da rota de debug
- * GET /api/glpi/debug/computers-by-contact.
- */
-export const glpiDebugComputersByContactQuerySchema = z.object({
-  contact: z.string().min(1, 'Informe o valor do campo contact'),
-});
-
-export type SendTermBody = z.infer<typeof sendTermSchema>;
 export type EmailParam = z.infer<typeof emailParamSchema>;
 export type IdParam = z.infer<typeof idParamSchema>;
-export type GlpiDebugUsersQuery = z.infer<typeof glpiDebugUsersQuerySchema>;
-export type GlpiDebugUserSearchQuery = z.infer<typeof glpiDebugUserSearchQuerySchema>;
-export type GlpiDebugComputerQuery = z.infer<typeof glpiDebugComputerQuerySchema>;
-export type GlpiDebugComputersByContactQuery = z.infer<typeof glpiDebugComputersByContactQuerySchema>;
 
 /**
  * Ativo selecionado pelo usuario no payload de geracao do termo.
@@ -115,13 +56,3 @@ export const generateTermSchema = z.object({
 });
 
 export type GenerateTermBody = z.infer<typeof generateTermSchema>;
-
-/**
- * Payload de POST /api/docusign/test-envelope.
- */
-export const testEnvelopeSchema = z.object({
-  recipientName: z.string().min(1, 'O nome do destinatario e obrigatorio'),
-  recipientEmail: z.string().email('Informe um email valido'),
-});
-
-export type TestEnvelopeBody = z.infer<typeof testEnvelopeSchema>;
