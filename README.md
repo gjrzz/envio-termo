@@ -1,319 +1,166 @@
 # Envio de Termos de Responsabilidade
 
-Aplicação full stack para automatizar o envio de **Termos de Responsabilidade**
-de equipamentos corporativos para colaboradores, integrando o **GLPI** (para
-localizar o colaborador e os ativos atribuídos a ele) e o **DocuSign** (para
-geração e envio do envelope de assinatura eletrônica).
+Sistema interno da **Monte Bravo Investimentos** para automatizar o envio de Termos de Responsabilidade de equipamentos corporativos para assinatura digital via DocuSign.
 
-## Sumário
+## Stack
 
-- [Visão geral](#visão-geral)
-- [Arquitetura e estrutura de pastas](#arquitetura-e-estrutura-de-pastas)
-- [Fluxo da aplicação](#fluxo-da-aplicação)
-- [Pré-requisitos](#pré-requisitos)
-- [Configuração do GLPI](#configuração-do-glpi)
-- [Configuração do DocuSign](#configuração-do-docusign)
-- [Instalação e execução (desenvolvimento)](#instalação-e-execução-desenvolvimento)
-- [Executando com Docker](#executando-com-docker)
-- [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Endpoints da API](#endpoints-da-api)
-- [Banco de dados](#banco-de-dados)
-- [Lint e formatação](#lint-e-formatação)
-- [Solução de problemas](#solução-de-problemas)
+| Camada | Tecnologias |
+|--------|-------------|
+| Frontend | React 18, Vite, TypeScript, MUI v6, TanStack Query, React Router v7 |
+| Backend | Node.js 22+, Express, TypeScript, Zod, SQLite (`node:sqlite` nativo) |
+| Integrações | GLPI REST API, Monday.com GraphQL API, DocuSign eSignature (JWT Grant) |
+| Conversão PDF | LibreOffice Headless (DOCX → PDF) |
+| Infra | Docker Compose, Nginx (proxy reverso), Ubuntu 22.04 |
 
-## Visão geral
+## Fluxo Principal
 
-| Camada    | Tecnologias                                                              |
-| --------- | ------------------------------------------------------------------------ |
-| Frontend  | React, Vite, TypeScript, Material UI (MUI), Axios, React Query, React Router |
-| Backend   | Node.js, Express, TypeScript, Zod, `node:sqlite` (módulo nativo do Node) |
-| Integrações | GLPI REST API, DocuSign eSignature API (SDK oficial `docusign-esign`)  |
-| Banco     | SQLite                                                                    |
+1. Usuário faz login no sistema
+2. Pesquisa colaborador por email corporativo
+3. Backend busca dados pessoais (Monday.com ou planilha Excel) + equipamentos atribuídos (GLPI)
+4. Usuário seleciona equipamentos e escolhe destino do termo (email pessoal ou corporativo)
+5. Backend gera DOCX preenchido → converte para PDF via LibreOffice → envia ao DocuSign
+6. Colaborador recebe o documento pronto para assinatura
+7. Registro é salvo no histórico (SQLite)
 
-## Arquitetura e estrutura de pastas
-
-Monorepo com dois workspaces npm:
+## Estrutura do Projeto
 
 ```
 envio-termo/
 ├── backend/
 │   ├── src/
-│   │   ├── controllers/    # Handlers das rotas Express
-│   │   ├── services/       # GLPIService, DocuSignService, TermService
-│   │   ├── repositories/    # Acesso ao SQLite (TermRepository)
+│   │   ├── config/          # Validação env (Zod) + SQLite setup
+│   │   ├── controllers/     # Handlers Express
+│   │   ├── middleware/       # Auth JWT, validação Zod, rate limit, error handler
+│   │   ├── repositories/    # Acesso a dados (termos, users)
 │   │   ├── routes/          # Definição das rotas /api
-│   │   ├── middleware/      # validate (Zod) e errorHandler global
-│   │   ├── config/          # env (Zod) e conexão com o banco
-│   │   ├── types/           # Tipagens e schemas Zod
-│   │   └── utils/           # logger, AppError, templateGenerator, asyncHandler
-│   ├── data/                 # Arquivo SQLite (gerado em runtime)
+│   │   ├── services/        # GLPI, DocuSign, Monday, DOCX, PDF, Auth
+│   │   │   └── providers/   # Strategy pattern (Excel/Monday)
+│   │   ├── types/           # Interfaces + schemas Zod
+│   │   └── utils/           # Logger, AppError, asyncHandler
+│   ├── data/                # SQLite + planilha Excel (runtime)
+│   ├── templates/           # ModeloTermo.docx
 │   ├── Dockerfile
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/            # Home, Result, History
-│   │   ├── components/       # Layout, AssetList, SnackbarProvider
-│   │   ├── hooks/             # Hooks React Query
-│   │   ├── services/          # Cliente Axios (api.ts)
-│   │   ├── theme/              # Tema MUI corporativo
-│   │   └── types/              # Tipagens compartilhadas com o backend
+│   │   ├── pages/           # Login, Home, Result, History, Users
+│   │   ├── components/      # Layout, AssetList, Snackbar
+│   │   ├── contexts/        # AuthContext (JWT + localStorage)
+│   │   ├── hooks/           # React Query wrappers
+│   │   ├── services/        # Axios client com interceptors
+│   │   ├── theme/           # Tema corporativo MUI
+│   │   └── types/           # Tipagens compartilhadas
 │   ├── Dockerfile
-│   ├── nginx.conf
-│   └── .env.example
+│   └── nginx.conf           # Proxy reverso /api → backend
 ├── docker-compose.yml
-└── package.json               # Workspaces npm (backend + frontend)
+└── README.md
 ```
 
-## Fluxo da aplicação
+## Deploy (Docker na VM Ubuntu)
 
-1. O usuário acessa a Home e informa o **email corporativo** do colaborador.
-2. O frontend chama `GET /api/users/:email/assets`.
-3. O backend abre uma sessão no GLPI (`initSession`), localiza o usuário pelo
-   email (`GLPIService.getUserByEmail`) e busca os ativos atribuídos a ele
-   (`GLPIService.getUserAssets`) nos itemtypes configurados (Computer,
-   Monitor, Peripheral, Phone, etc.).
-4. O frontend exibe o colaborador e a lista de equipamentos com checkboxes.
-5. O usuário seleciona os equipamentos e clica em **"Enviar Termo"**, que
-   chama `POST /api/terms/send`.
-6. O backend gera o HTML do Termo de Responsabilidade (nome, email, data de
-   emissão e lista de equipamentos) e cria um envelope no DocuSign
-   (`DocuSignService.createEnvelope`), que envia automaticamente o documento
-   para assinatura do colaborador.
-7. O registro do termo é persistido no SQLite (tabela `termos`) com o
-   `envelopeId` e o status retornado pelo DocuSign.
-8. A tela de **Histórico** lista todos os termos enviados
-   (`GET /api/terms`), com colaborador, email, data de envio, status no
-   DocuSign e o Envelope ID.
+### Pré-requisitos na VM
 
-## Pré-requisitos
+- Docker + Docker Compose
+- Git
 
-- Node.js 22.5+ (o backend usa o módulo nativo `node:sqlite`)
-- npm 10+
-- Acesso a uma instância GLPI com a API REST habilitada
-- Conta DocuSign (Developer/Sandbox ou produção) com um App configurado para
-  autenticação JWT
-- Docker e Docker Compose (opcional, para execução containerizada)
+### Setup inicial (uma vez)
 
-## Configuração do GLPI
+```bash
+git clone https://github.com/gjrzz/envio-termo.git ~/envio-termo
+cd ~/envio-termo
 
-1. Habilite a API REST em **Configurar > Geral > API** (ative "Ativar API
-   REST" e "Ativar login com token de aplicação").
-2. Gere um **App Token** (token da aplicação cliente) na mesma tela.
-3. No perfil do usuário de serviço que será usado pela integração, gere um
-   **Personal Token** em **Preferências > Chave de acesso remoto da API**.
-4. Garanta que esse usuário tenha permissão de leitura sobre `User`,
-   `Computer`, `Monitor`, `Peripheral`, `Phone` (ou os itemtypes que desejar
-   consultar).
-5. Anote a URL da API REST (geralmente `https://<seu-glpi>/apirest.php`).
+# Copiar arquivos sensíveis (não versionados)
+cp ~/backup/.env backend/.env
+cp ~/backup/docusign_private_key.pem backend/
+cp ~/backup/colaboradores.xlsx backend/data/
 
-Esses dados serão usados nas variáveis `GLPI_API_URL`, `GLPI_APP_TOKEN` e
-`GLPI_USER_TOKEN` do backend.
+# Build e subir
+docker compose up -d --build
+```
 
-> **Observação sobre a busca por email:** o GLPI armazena o email do usuário
-> em uma tabela separada (`glpi_useremails`). A consulta usa o endpoint de
-> busca (`/search/User`) filtrando pelo *search option* configurado em
-> `GLPI_SEARCH_FIELD_EMAIL` (padrão `5`, que corresponde ao campo "Email" na
-> maioria das instalações padrão). Caso sua instância tenha um *search
-> option* diferente para o email, ajuste essa variável.
+### Deploy de atualizações
 
-> **Observação sobre os ativos:** a busca de equipamentos usa o filtro
-> `searchText[users_id]=<id>` nos endpoints `getItems` de cada itemtype
-> listado em `GLPI_ASSET_TYPES`, retornando os ativos cujo campo "Usado por"
-> (`users_id`) corresponde ao colaborador.
+```bash
+cd ~/envio-termo
+git pull origin main
+docker compose down
+docker compose up -d --build
+```
 
-## Configuração do DocuSign
+### Acessar
 
-A integração usa o fluxo **JWT Grant** do SDK oficial `docusign-esign`.
+- **Sistema:** `http://<ip-da-vm>` (porta 80)
+- **API direto:** `http://<ip-da-vm>:4000/api/health`
 
-1. Crie uma aplicação em
-   [DocuSign Developer Center](https://developers.docusign.com/) (ambiente
-   demo/sandbox) e anote a **Integration Key (Client ID)**.
-2. Gere um par de chaves RSA para a aplicação (na própria tela da app, em
-   "Authentication"). Salve a **chave privada** em um arquivo `.pem`.
-3. Obtenha o **User ID (GUID)** do usuário que enviará os envelopes
-   (disponível em "Minhas Preferências > Apps e Chaves de Integração").
-4. Obtenha o **Account ID** da conta DocuSign.
-5. Conceda o **consentimento JWT** (consent) uma única vez, acessando a URL
-   abaixo no navegador (substitua os valores):
+### Credenciais iniciais
 
-   ```
-   https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=<INTEGRATION_KEY>&redirect_uri=https://www.docusign.com
-   ```
+- Email: `admin@montebravo.com.br`
+- Senha: `admin123`
 
-6. Salve o arquivo da chave privada em
-   `backend/docusign_private_key.pem` (ou outro caminho, ajustando
-   `DOCUSIGN_PRIVATE_KEY_PATH`).
+> Troque a senha após o primeiro login na aba Usuários.
 
-Esses dados alimentam as variáveis `DOCUSIGN_INTEGRATION_KEY`,
-`DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_BASE_PATH`,
-`DOCUSIGN_AUTH_SERVER` e `DOCUSIGN_PRIVATE_KEY_PATH` do backend.
+## Fluxo de Desenvolvimento
 
-> Para produção, use `DOCUSIGN_BASE_PATH=https://www.docusign.net/restapi` e
-> `DOCUSIGN_AUTH_SERVER=account.docusign.com`.
+1. Desenvolver localmente (Windows)
+2. Kiro faz commit + push para branch `git`
+3. Merge `git` → `main` pelo GitHub
+4. Na VM: `git pull origin main` + rebuild
 
-## Instalação e execução (desenvolvimento)
+## Variáveis de Ambiente (backend/.env)
 
-1. Clone o repositório e instale as dependências de ambos os workspaces a
-   partir da raiz:
-
-   ```bash
-   npm install
-   ```
-
-2. Configure o backend:
-
-   ```bash
-   cd backend
-   cp .env.example .env
-   # edite o .env com as credenciais do GLPI e DocuSign
-   # coloque a chave privada do DocuSign em ./docusign_private_key.pem
-   ```
-
-3. Configure o frontend:
-
-   ```bash
-   cd ../frontend
-   cp .env.example .env
-   # ajuste VITE_API_URL se necessário
-   ```
-
-4. Em dois terminais (a partir da raiz do monorepo):
-
-   ```bash
-   npm run dev:backend   # inicia o backend em http://localhost:4000
-   npm run dev:frontend  # inicia o frontend em http://localhost:5173
-   ```
-
-O banco SQLite é criado automaticamente em `backend/data/database.sqlite` na
-primeira execução.
-
-## Executando com Docker
-
-1. Configure `backend/.env` (a partir de `backend/.env.example`) e coloque a
-   chave privada do DocuSign em `backend/docusign_private_key.pem`.
-2. Na raiz do projeto:
-
-   ```bash
-   docker compose up --build
-   ```
-
-3. Acesse:
-   - Frontend: http://localhost:5173
-   - Backend: http://localhost:4000/api/health
-
-Os dados do SQLite são persistidos no volume `backend-data`.
-
-## Variáveis de ambiente
-
-### Backend (`backend/.env`)
-
-| Variável | Descrição | Padrão |
-| --- | --- | --- |
-| `PORT` | Porta do servidor Express | `4000` |
-| `NODE_ENV` | Ambiente (`development`/`production`/`test`) | `development` |
-| `CORS_ORIGIN` | Origem permitida para CORS (frontend) | `http://localhost:5173` |
-| `GLPI_API_URL` | URL base da API REST do GLPI | - |
-| `GLPI_APP_TOKEN` | App Token do GLPI | - |
-| `GLPI_USER_TOKEN` | User Token do usuário de serviço | - |
-| `GLPI_ASSET_TYPES` | Itemtypes consultados (separados por vírgula) | `Computer,Monitor,Peripheral,Phone` |
-| `GLPI_SEARCH_FIELD_EMAIL` | ID do search option de "Email" no itemtype User | `5` |
-| `DOCUSIGN_BASE_PATH` | Base path da API DocuSign | `https://demo.docusign.net/restapi` |
-| `DOCUSIGN_AUTH_SERVER` | Servidor OAuth do DocuSign | `account-d.docusign.com` |
-| `DOCUSIGN_INTEGRATION_KEY` | Integration Key (Client ID) | - |
-| `DOCUSIGN_USER_ID` | User ID (GUID) do usuário impersonado | - |
-| `DOCUSIGN_ACCOUNT_ID` | Account ID do DocuSign | - |
-| `DOCUSIGN_PRIVATE_KEY_PATH` | Caminho da chave privada RSA | `./docusign_private_key.pem` |
-| `DOCUSIGN_BRAND_NAME` | Nome exibido como remetente | `Sua Empresa` |
-| `DATABASE_PATH` | Caminho do arquivo SQLite | `./data/database.sqlite` |
-
-### Frontend (`frontend/.env`)
-
-| Variável | Descrição | Padrão |
-| --- | --- | --- |
-| `VITE_API_URL` | URL base da API do backend | `http://localhost:4000/api` |
+| Variável | Descrição |
+|----------|-----------|
+| `PORT` | Porta do servidor (padrão: 4000) |
+| `CORS_ORIGIN` | Origem CORS (`*` em produção via proxy) |
+| `GLPI_API_URL` | URL da API REST do GLPI |
+| `GLPI_APP_TOKEN` | App Token do GLPI |
+| `GLPI_USER_TOKEN` | User Token do GLPI |
+| `GLPI_SEARCH_FIELD_EMAIL` | ID do campo de email no GLPI (padrão: 5) |
+| `MONDAY_API_TOKEN` | Token da API Monday.com |
+| `MONDAY_BOARD_ID` | ID da board do Monday |
+| `EMPLOYEE_PROVIDER` | Fonte de dados: `monday` ou `excel` |
+| `EMPLOYEE_EXCEL_PATH` | Caminho da planilha (se provider=excel) |
+| `DOCUSIGN_BASE_PATH` | Base path DocuSign |
+| `DOCUSIGN_AUTH_SERVER` | Auth server DocuSign |
+| `DOCUSIGN_INTEGRATION_KEY` | Client ID DocuSign |
+| `DOCUSIGN_USER_ID` | User ID para JWT Grant |
+| `DOCUSIGN_ACCOUNT_ID` | Account ID DocuSign |
+| `DOCUSIGN_PRIVATE_KEY_PATH` | Caminho da chave RSA |
+| `DATABASE_PATH` | Caminho do SQLite |
+| `GENERATED_TERMS_PATH` | Pasta de destino dos PDFs |
+| `DOCX_TEMPLATE_PATH` | Caminho do template Word |
+| `JWT_SECRET` | Segredo para tokens de autenticação |
 
 ## Endpoints da API
 
-Todas as rotas têm o prefixo `/api`.
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | `/api/health` | Não | Health check |
+| POST | `/api/auth/login` | Não | Login (rate limited: 5/min) |
+| GET | `/api/auth/me` | Sim | Dados do usuário logado |
+| PUT | `/api/auth/change-password` | Sim | Alterar senha |
+| PUT | `/api/auth/avatar` | Sim | Atualizar foto de perfil |
+| GET | `/api/users-management` | Sim | Listar usuários |
+| POST | `/api/users-management` | Sim | Criar usuário |
+| PUT | `/api/users-management/:id` | Sim | Editar usuário |
+| DELETE | `/api/users-management/:id` | Sim | Excluir usuário |
+| GET | `/api/users/:email/assets` | Sim | Equipamentos do colaborador (GLPI) |
+| GET | `/api/monday/employee/:email` | Sim | Dados pessoais do colaborador |
+| POST | `/api/terms/generate` | Sim | Gerar e enviar termo via DocuSign |
+| GET | `/api/terms` | Sim | Histórico de termos enviados |
+| GET | `/api/terms/:id` | Sim | Detalhes de um termo |
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| `GET` | `/health` | Healthcheck simples |
-| `GET` | `/users/:email/assets` | Retorna o colaborador e os equipamentos atribuídos a ele no GLPI |
-| `POST` | `/terms/send` | Cria o envelope no DocuSign e registra o termo |
-| `GET` | `/terms` | Lista o histórico de termos enviados |
-| `GET` | `/terms/:id` | Detalhes de um termo (atualiza status via DocuSign se aplicável) |
+## Segurança
 
-### Exemplo: `POST /api/terms/send`
+- Autenticação JWT com expiração de 24h
+- Rate limiting no login (5 tentativas/min por IP)
+- Logout automático no frontend quando token expira (401)
+- Senhas hasheadas com bcrypt (salt rounds: 10)
+- CORS configurável via variável de ambiente
+- Trust proxy habilitado para IP real via Nginx
 
-```json
-{
-  "nome": "Maria Silva",
-  "email": "maria.silva@empresa.com",
-  "equipamentos": [
-    {
-      "id": 12,
-      "itemtype": "Computer",
-      "name": "Notebook Dell Latitude 5420",
-      "serial": "ABC123",
-      "inventoryNumber": "MB001"
-    }
-  ]
-}
-```
+## Banco de Dados (SQLite)
 
-Resposta (`201 Created`):
+**Tabela `termos`:** id, nome, email, equipamentos (JSON), envelopeId, status, createdAt
 
-```json
-{
-  "id": 1,
-  "nome": "Maria Silva",
-  "email": "maria.silva@empresa.com",
-  "equipamentos": [ ... ],
-  "envelopeId": "5b1f2e3a-....",
-  "status": "sent",
-  "createdAt": "2026-06-12 14:32:10"
-}
-```
-
-## Banco de dados
-
-Tabela `termos` (SQLite):
-
-| Campo | Tipo | Descrição |
-| --- | --- | --- |
-| `id` | INTEGER (PK) | Identificador do termo |
-| `nome` | TEXT | Nome do colaborador |
-| `email` | TEXT | Email do colaborador |
-| `equipamentos` | TEXT (JSON) | Lista de equipamentos selecionados |
-| `envelopeId` | TEXT | ID do envelope no DocuSign |
-| `status` | TEXT | Status do envelope (`sent`, `delivered`, `completed`, etc.) |
-| `createdAt` | TEXT | Data/hora de criação do registro |
-
-## Lint e formatação
-
-```bash
-# Backend
-npm run lint --workspace backend
-npm run format --workspace backend
-
-# Frontend
-npm run lint --workspace frontend
-npm run format --workspace frontend
-```
-
-## Solução de problemas
-
-- **`Variáveis de ambiente inválidas ou ausentes`**: confira se todas as
-  variáveis obrigatórias estão definidas em `backend/.env` (compare com
-  `.env.example`).
-- **`Nao foi possivel autenticar na API do GLPI`**: valide `GLPI_API_URL`,
-  `GLPI_APP_TOKEN` e `GLPI_USER_TOKEN`, e confirme que a API REST está
-  habilitada no GLPI.
-- **`Nao foi possivel autenticar na API do DocuSign`**: confirme o caminho da
-  chave privada (`DOCUSIGN_PRIVATE_KEY_PATH`), se o consentimento JWT foi
-  concedido e se `DOCUSIGN_INTEGRATION_KEY`/`DOCUSIGN_USER_ID`/
-  `DOCUSIGN_ACCOUNT_ID` estão corretos.
-- **Nenhum equipamento encontrado**: verifique se os ativos no GLPI possuem o
-  campo "Usado por" (`users_id`) preenchido com o usuário pesquisado, e se o
-  itemtype do ativo está listado em `GLPI_ASSET_TYPES`.
+**Tabela `users`:** id, name, email, password (bcrypt), avatar (base64), createdAt
