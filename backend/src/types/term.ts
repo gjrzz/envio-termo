@@ -35,12 +35,3 @@ export interface TermRow {
   status: string;
   createdAt: string;
 }
-
-/**
- * Payload de entrada para criacao/envio de um novo termo.
- */
-export interface SendTermInput {
-  nome: string;
-  email: string;
-  equipamentos: EquipmentItem[];
-}

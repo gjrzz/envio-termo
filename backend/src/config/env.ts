@@ -35,9 +35,6 @@ const envSchema = z.object({
 
   // Template DOCX
   DOCX_TEMPLATE_PATH: z.string().default('./templates/ModeloTermo.docx'),
-
-  // DocuSign Template ID para Termo de Responsabilidade
-  DOCUSIGN_TERM_TEMPLATE_ID: z.string().default('0bfcf43b-76aa-4c63-b73d-c74e803f9586'),
 });
 
 function loadEnv() {
