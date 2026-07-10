@@ -154,8 +154,8 @@ export class DocuSignService {
               {
                 anchorString: '/sn1/',
                 anchorUnits: 'pixels',
-                anchorXOffset: '20',
-                anchorYOffset: '-10',
+                anchorXOffset: '0',
+                anchorYOffset: '0',
               },
             ],
           },
